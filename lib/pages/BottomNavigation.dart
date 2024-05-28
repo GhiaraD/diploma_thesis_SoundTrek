@@ -75,14 +75,14 @@ class _NavigationExampleState extends State<NavigationExample> with TickerProvid
                       ),
                       Tab(
                         icon: currentTab == 1
-                            ? const Icon(Icons.calendar_today, color: my_colors.Colors.primary)
-                            : const Icon(Icons.calendar_today_outlined, color: Colors.black54),
+                            ? Image.asset("lib/assets/images/medal_primary.png", height: 24, width: 24)
+                            : Image.asset("lib/assets/images/medal_black.png", height: 24, width: 24),
                         iconMargin: EdgeInsets.zero,
                       ),
                       Tab(
                         icon: currentTab == 2
-                            ? const Icon(Icons.calendar_today, color: my_colors.Colors.primary)
-                            : const Icon(Icons.calendar_today_outlined, color: Colors.black54),
+                            ? Image.asset("lib/assets/images/leaderboard_primary.png", height: 24, width: 24)
+                            : Image.asset("lib/assets/images/leaderboard_black.png", height: 24, width: 24),
                         iconMargin: EdgeInsets.zero,
                       ),
                       Tab(

@@ -38,30 +38,65 @@ class _MapPageState extends State<MapPage> {
   final _geofenceList = <Geofence>[
     Geofence(
       id: 'place_1',
-      latitude: 44.44576,
-      longitude: 26.0527769,
+      latitude: 44.4994,
+      longitude: 26.0581,
       radius: [
-        GeofenceRadius(id: 'radius_1000m', length: 4000),
+        GeofenceRadius(id: 'radius_1000m', length: 5000),
       ],
     ),
     Geofence(
       id: 'place_2',
-      latitude: 44.4328758,
-      longitude: 26.1027512,
+      latitude: 44.4558,
+      longitude: 26.1456,
       radius: [
-        GeofenceRadius(id: 'radius_25m', length: 25),
-        GeofenceRadius(id: 'radius_100m', length: 100),
-        GeofenceRadius(id: 'radius_200m', length: 200),
-        GeofenceRadius(id: 'radius_1000m', length: 1000),
+        GeofenceRadius(id: 'radius_1000m', length: 3450),
+      ],
+    ),
+    Geofence(
+      id: 'place_3',
+      latitude: 44.4035,
+      longitude: 26.1915,
+      radius: [
+        GeofenceRadius(id: 'radius_1000m', length: 3400),
+      ],
+    ),
+    Geofence(
+      id: 'place_4',
+      latitude: 44.3590,
+      longitude: 26.1405,
+      radius: [
+        GeofenceRadius(id: 'radius_1000m', length: 3000),
+      ],
+    ),
+    Geofence(
+      id: 'place_5',
+      latitude: 44.4064,
+      longitude: 26.0864,
+      radius: [
+        GeofenceRadius(id: 'radius_1000m', length: 3800),
+      ],
+    ),
+    Geofence(
+      id: 'place_6',
+      latitude: 44.4338,
+      longitude: 26.0022,
+      radius: [
+        GeofenceRadius(id: 'radius_1000m', length: 3550),
       ],
     ),
   ];
 
+  var _geofenceColors = <Color>[
+    Colors.yellow.withOpacity(0.35),
+    Colors.red.withOpacity(0.2),
+    Colors.green.withOpacity(0.25),
+    Colors.blue.withOpacity(0.2),
+    Colors.deepPurple.withOpacity(0.2),
+    Colors.orange.withOpacity(0.2),
+  ];
+
   // map
   final mapController = MapController();
-  double latitude = 44.44576;
-  double longitude = 26.0527769;
-  double zoom = 16.0;
   AlignOnUpdate _alignPositionOnUpdate = AlignOnUpdate.always;
   final StreamController<double?> _alignPositionStreamController = StreamController<double?>();
 
@@ -202,11 +237,12 @@ class _MapPageState extends State<MapPage> {
             options: MapOptions(
               onTap: (point, latlng) {
                 setState(() {
-                  _markerPoz = latlng;
+                  _markerPoz = LatLng(double.parse(latlng.latitude.toStringAsFixed(4)),
+                      double.parse(latlng.longitude.toStringAsFixed(4)));
                 });
                 modalBottomSheet();
               },
-              initialZoom: 2.5,
+              initialZoom: 10.5,
               onPositionChanged: (MapPosition position, bool hasGesture) {
                 if (hasGesture && _alignPositionOnUpdate != AlignOnUpdate.never) {
                   setState(
@@ -237,10 +273,39 @@ class _MapPageState extends State<MapPage> {
               CircleLayer(
                 circles: [
                   CircleMarker(
-                    point: LatLng(_geofenceList[0].latitude, _geofenceList[0].longitude),
-                    radius: _geofenceList[0].radius[0].length,
+                      point: LatLng(_geofenceList[0].latitude, _geofenceList[0].longitude),
+                      radius: _geofenceList[0].radius[0].length,
+                      useRadiusInMeter: true,
+                      color: _geofenceColors[0]),
+                  CircleMarker(
+                    point: LatLng(_geofenceList[1].latitude, _geofenceList[1].longitude),
+                    radius: _geofenceList[1].radius[0].length,
                     useRadiusInMeter: true,
-                    color: Colors.blue.withOpacity(0.2),
+                    color: _geofenceColors[1],
+                  ),
+                  CircleMarker(
+                    point: LatLng(_geofenceList[2].latitude, _geofenceList[2].longitude),
+                    radius: _geofenceList[2].radius[0].length,
+                    useRadiusInMeter: true,
+                    color: _geofenceColors[2],
+                  ),
+                  CircleMarker(
+                    point: LatLng(_geofenceList[3].latitude, _geofenceList[3].longitude),
+                    radius: _geofenceList[3].radius[0].length,
+                    useRadiusInMeter: true,
+                    color: _geofenceColors[3],
+                  ),
+                  CircleMarker(
+                    point: LatLng(_geofenceList[4].latitude, _geofenceList[4].longitude),
+                    radius: _geofenceList[4].radius[0].length,
+                    useRadiusInMeter: true,
+                    color: _geofenceColors[4],
+                  ),
+                  CircleMarker(
+                    point: LatLng(_geofenceList[5].latitude, _geofenceList[5].longitude),
+                    radius: _geofenceList[5].radius[0].length,
+                    useRadiusInMeter: true,
+                    color: _geofenceColors[5],
                   ),
                 ],
               ),
@@ -353,10 +418,7 @@ class _MapPageState extends State<MapPage> {
                   ),
                 ),
                 onPressed: () {
-                  Fluttertoast.showToast(
-                    msg: 'question mark!',
-                    toastLength: Toast.LENGTH_SHORT,
-                  );
+                  tutorialDialog();
                 },
                 child: const Icon(
                   Icons.question_mark,
@@ -381,10 +443,25 @@ class _MapPageState extends State<MapPage> {
                   ),
                 ),
                 onPressed: () {
-                  Fluttertoast.showToast(
-                    msg: 'zones!',
-                    toastLength: Toast.LENGTH_SHORT,
-                  );
+                  if (_geofenceColors[0].opacity != 0) {
+                    setState(() {
+                      _geofenceColors[0] = Colors.yellow.withOpacity(0);
+                      _geofenceColors[1] = Colors.red.withOpacity(0);
+                      _geofenceColors[2] = Colors.green.withOpacity(0);
+                      _geofenceColors[3] = Colors.blue.withOpacity(0);
+                      _geofenceColors[4] = Colors.deepPurple.withOpacity(0);
+                      _geofenceColors[5] = Colors.orange.withOpacity(0);
+                    });
+                  } else {
+                    setState(() {
+                      _geofenceColors[0] = Colors.yellow.withOpacity(0.35);
+                      _geofenceColors[1] = Colors.red.withOpacity(0.2);
+                      _geofenceColors[2] = Colors.green.withOpacity(0.25);
+                      _geofenceColors[3] = Colors.blue.withOpacity(0.2);
+                      _geofenceColors[4] = Colors.deepPurple.withOpacity(0.2);
+                      _geofenceColors[5] = Colors.orange.withOpacity(0.2);
+                    });
+                  }
                 },
                 child: const Icon(
                   Icons.layers_outlined,
@@ -398,27 +475,27 @@ class _MapPageState extends State<MapPage> {
             width: 40,
             height: 40,
             child: TextButton(
-                style: ButtonStyle(
-                  padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
-                      const EdgeInsets.symmetric(horizontal: 0, vertical: 0)),
-                  backgroundColor: MaterialStateProperty.all<Color>(my_colors.Colors.greyBackground),
-                  shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+              style: ButtonStyle(
+                padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
+                    const EdgeInsets.symmetric(horizontal: 0, vertical: 0)),
+                backgroundColor: MaterialStateProperty.all<Color>(my_colors.Colors.greyBackground),
+                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                onPressed: () {
-                  Fluttertoast.showToast(
-                    msg: 'upright!',
-                    toastLength: Toast.LENGTH_SHORT,
-                  );
-                },
-                child: const Icon(
-                  Icons.abc,
-                  color: my_colors.Colors.primary,
-                ) // Needed when having multiple FABs
-                ),
+              ),
+              onPressed: () {
+                if (mapController.camera.rotation != 0) {
+                  setState(() {
+                    mapController.rotate(0);
+                  });
+                }
+              },
+              child: Image.asset(
+                'lib/assets/images/north100.png',
+              ), // Needed when having multiple FABs
+            ),
           ),
         ],
       ),
@@ -455,11 +532,11 @@ class _MapPageState extends State<MapPage> {
                         color: Colors.black54,
                       )),
                   const SizedBox(height: 10),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.location_on, color: my_colors.Colors.primary),
-                      Text(' 42.1234, 55.2345',
-                          style: TextStyle(
+                      const Icon(Icons.location_on, color: my_colors.Colors.primary),
+                      Text(' ${_markerPoz.latitude.toStringAsFixed(4)}, ${_markerPoz.longitude.toStringAsFixed(4)}',
+                          style: const TextStyle(
                             fontSize: 20,
                             color: Colors.black54,
                           )),
@@ -551,5 +628,33 @@ class _MapPageState extends State<MapPage> {
     ).whenComplete(() => (setState(() {
           _markerPoz = const LatLng(-90, -180);
         })));
+  }
+
+  Future<void> tutorialDialog() {
+    // TODO
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Tutorial'),
+          content: const SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('This is a tutorial dialog.'),
+                Text('You can use it to explain new features.'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Got it!'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
