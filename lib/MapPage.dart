@@ -329,7 +329,10 @@ class _MapPageState extends State<MapPage> {
                   maxZoom: 18,
                   heatMapDataSource: InMemoryHeatMapDataSource(data: data),
                   heatMapOptions: HeatMapOptions(
-                    minOpacity: 0.1,
+                    minOpacity: 1,
+                    blurFactor: 0.5,
+                    layerOpacity: 0.75,
+                    radius: 35,
                   ),
                   reset: _rebuildStream.stream,
                 ),
@@ -391,7 +394,7 @@ class _MapPageState extends State<MapPage> {
                           style: TextStyle(color: my_colors.Colors.primary),
                         ),
                         Text(
-                          '+150 pts/min',
+                          '+100 pts/min',
                           style: TextStyle(color: my_colors.Colors.primary),
                         ),
                       ],
@@ -497,6 +500,50 @@ class _MapPageState extends State<MapPage> {
               ), // Needed when having multiple FABs
             ),
           ),
+          Positioned(
+            top: 32,
+            left: 16,
+            child: Container(
+              color: my_colors.Colors.greyBackground,
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          color: Colors.green,
+                        ),
+                        Container(
+                          width: 24,
+                          height: 24,
+                          color: Colors.yellow.shade700,
+                        ),
+                        Container(
+                          width: 24,
+                          height: 24,
+                          color: Colors.red,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("30"),
+                        Text("50"),
+                        Text("70"),
+                        Text("90 db(A)"),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
         ],
       ),
       // Add your bottom navigation bar here
@@ -631,23 +678,105 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> tutorialDialog() {
-    // TODO
     return showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Tutorial'),
-          content: const SingleChildScrollView(
+          title: const Text('How it works'),
+          backgroundColor: my_colors.Colors.greyBackground,
+          content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                Text('This is a tutorial dialog.'),
-                Text('You can use it to explain new features.'),
+                RichText(
+                  text: TextSpan(
+                    style: DefaultTextStyle.of(context).style,
+                    children: [
+                      const TextSpan(
+                        text: 'You\'re viewing a sound map with color-coded noise levels.\n\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: 'Press anywhere on the map to see the noise details for that point.\n\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: 'Contributing to the map:\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: '- record sound for one minute\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: '- get points to compete with friends\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: '- monthly competitions - score resets, score zones change, leaders are rewarded ',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      WidgetSpan(
+                        child: Image.asset('lib/assets/images/trophy.png', width: 16, height: 16),
+                      ),
+                      const TextSpan(
+                        text: '\n- score zones give you multipliers\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: '- collect all the achievements\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: '- contribute daily and try to get the longest streak\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: '- have fun and help the community!\n\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(text: 'Current zones:\n'),
+                      const TextSpan(
+                        text: 'Yellow',
+                        style: TextStyle(color: Color(0xFFC2C21F), fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' - ×1.1\n'),
+                      const TextSpan(
+                        text: 'Red',
+                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' and '),
+                      const TextSpan(
+                        text: 'Orange',
+                        style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' - ×1.2\n'),
+                      const TextSpan(
+                        text: 'Green',
+                        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' - ×1.3\n'),
+                      const TextSpan(
+                        text: 'Blue',
+                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' - ×1.4\n'),
+                      const TextSpan(
+                        text: 'Purple',
+                        style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' - ×1.5'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Got it!'),
+              child: const Text(
+                'Got it!',
+                style: TextStyle(color: my_colors.Colors.primary),
+              ),
               onPressed: () {
                 Navigator.of(context).pop();
               },

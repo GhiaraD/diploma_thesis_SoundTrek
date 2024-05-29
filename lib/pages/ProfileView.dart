@@ -38,13 +38,13 @@ class ProfilePage extends StatelessWidget {
                 children: [
                   Column(
                     children: [
-                      Text("1500", style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text("1500 pts", style: TextStyle(fontWeight: FontWeight.bold)),
                       Text("Score"),
                     ],
                   ),
                   Column(
                     children: [
-                      Text("25", style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text("25 days", style: TextStyle(fontWeight: FontWeight.bold)),
                       Text("Streak"),
                     ],
                   ),
@@ -143,7 +143,7 @@ class ProfilePage extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text("Highest streak", style: TextStyle(fontSize: 16)),
-                          Text("35", style: TextStyle(fontSize: 16)),
+                          Text("35 days", style: TextStyle(fontSize: 16)),
                         ],
                       ),
                       SizedBox(height: 12),
@@ -188,7 +188,7 @@ class ProfilePage extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text("2600", style: TextStyle(fontSize: 16)),
+                              Text("2600 pts", style: TextStyle(fontSize: 16)),
                               Text("July 2023", style: TextStyle(fontSize: 16)),
                             ],
                           ),
