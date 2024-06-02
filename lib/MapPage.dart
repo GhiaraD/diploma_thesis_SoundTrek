@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:SoundTrek/StatsPage.dart';
+import 'package:SoundTrek/models/NoiseLevel.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geofence_service/geofence_service.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 import 'resources/colors.dart' as my_colors;
@@ -166,16 +167,30 @@ class _MapPageState extends State<MapPage> {
       _geofenceService.start(_geofenceList).catchError(_onError);
 
       _alignPositionOnUpdate = AlignOnUpdate.always;
+
       // _alignPositionStreamController = StreamController<double?>();
     });
   }
 
-  _loadData() async {
-    var str = await rootBundle.loadString('lib/assets/initial_data.json');
-    List<dynamic> result = jsonDecode(str);
+  Future<List<NoiseLevel>> fetchNoiseLevel() async {
+    final response = await http.get(Uri.parse('http://192.168.2.234:5274/'));
 
+    if (response.statusCode == 200) {
+      List<dynamic> jsonData = jsonDecode(response.body);
+      List<NoiseLevel> noiseLevels = jsonData.map((json) => NoiseLevel.fromJson(json)).toList();
+      return noiseLevels;
+    } else {
+      throw Exception('Failed to load noise level');
+    }
+  }
+
+  _loadData() async {
+    List<NoiseLevel> noise = await fetchNoiseLevel();
     setState(() {
-      data = result.map((e) => e as List<dynamic>).map((e) => WeightedLatLng(LatLng(e[0], e[1]), 0.1)).toList();
+      data = noise
+          .map((e) =>
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 0.1))
+          .toList();
     });
   }
 
@@ -378,7 +393,7 @@ class _MapPageState extends State<MapPage> {
                     ),
                   ),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   Fluttertoast.showToast(
                     msg: 'Start Contributing pressed!',
                     toastLength: Toast.LENGTH_SHORT,
