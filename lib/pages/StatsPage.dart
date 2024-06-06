@@ -3,8 +3,8 @@ import 'package:flutter/rendering.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-import '../resources/colors.dart' as my_colors;
-import '../resources/themes.dart' as my_themes;
+import '../../resources/colors.dart' as my_colors;
+import '../../resources/themes.dart' as my_themes;
 
 class StatsPage extends StatefulWidget {
   final LatLng latlng;

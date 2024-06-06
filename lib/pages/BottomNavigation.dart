@@ -2,9 +2,10 @@ import 'package:SoundTrek/pages/AchievementsView.dart';
 import 'package:SoundTrek/pages/LeaderboardView.dart';
 import 'package:SoundTrek/pages/ProfileView.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../MapPage.dart';
 import '../resources/colors.dart' as my_colors;
+import 'MapPage.dart';
 
 class NavigationExample extends StatefulWidget {
   const NavigationExample({super.key, this.tabIndex = 0});
@@ -24,6 +25,10 @@ class _NavigationExampleState extends State<NavigationExample> with TickerProvid
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.blue, // Set the color you want here
+      systemNavigationBarIconBrightness: Brightness.light, // Set icon brightness
+    ));
     tabController = TabController(vsync: this, length: 4);
     tabController.addListener(() {
       if (!tabController.indexIsChanging) {
@@ -36,7 +41,7 @@ class _NavigationExampleState extends State<NavigationExample> with TickerProvid
       const MapPage(),
       const AchievementView(),
       const LeaderboardView(),
-      const ProfilePage(),
+      ProfilePage(),
     ];
   }
 

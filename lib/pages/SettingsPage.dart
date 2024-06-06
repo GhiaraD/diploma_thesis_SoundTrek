@@ -1,10 +1,10 @@
+import 'package:SoundTrek/services/AuthenticationService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../resources/colors.dart' as my_colors;
-import '../resources/themes.dart' as my_themes;
-import 'main.dart';
+import '../../resources/colors.dart' as my_colors;
+import '../../resources/themes.dart' as my_themes;
+import '../main.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -14,6 +14,8 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  final AuthenticationService apiService = AuthenticationService();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,8 +81,7 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: TextButton(
               onPressed: () async {
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                prefs.remove('email');
+                apiService.logout();
                 Navigator.pushReplacement(
                     context, MaterialPageRoute(builder: (context) => const MyHomePage(title: "SoundTrek")));
               },

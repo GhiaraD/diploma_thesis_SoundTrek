@@ -1,9 +1,10 @@
+import 'package:SoundTrek/pages/BottomNavigation.dart';
+import 'package:SoundTrek/resources/colors.dart' as my_colors;
+import 'package:SoundTrek/resources/themes.dart' as my_themes;
+import 'package:SoundTrek/services/AuthenticationService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../pages/BottomNavigation.dart';
-import '../resources/colors.dart' as my_colors;
-import '../resources/themes.dart' as my_themes;
 import 'LoginView.dart';
 
 class RegisterView extends StatefulWidget {
@@ -14,6 +15,7 @@ class RegisterView extends StatefulWidget {
 }
 
 class _RegisterViewState extends State<RegisterView> {
+  final AuthenticationService apiService = AuthenticationService();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -21,6 +23,21 @@ class _RegisterViewState extends State<RegisterView> {
   bool _isButtonEnabled = false;
   bool _isObscuredPassword = true;
   bool _isObscuredConfirmPassword = true;
+
+  Future<bool> _register() async {
+    try {
+      await apiService.register(
+        _usernameController.text,
+        _passwordController.text,
+        _emailController.text,
+      );
+      print('User registered');
+      return true;
+    } catch (e) {
+      print(e);
+    }
+    return false;
+  }
 
   void _togglePasswordVisibility() {
     setState(() {
@@ -155,11 +172,20 @@ class _RegisterViewState extends State<RegisterView> {
                   ? (my_themes.Themes.buttonHalfPageStyle)
                   : (my_themes.Themes.buttonHalfPageStyleDisabled),
               onPressed: _isButtonEnabled
-                  ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const NavigationExample()),
-                      );
+                  ? () async {
+                      bool registered = await _register();
+                      if (registered) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NavigationExample()),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Registration failed. Please try again.'),
+                          ),
+                        );
+                      }
                     }
                   : null,
               child: const Text('Sign Up'),

@@ -1,18 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:SoundTrek/StatsPage.dart';
 import 'package:SoundTrek/models/NoiseLevel.dart';
+import 'package:SoundTrek/pages/StatsPage.dart';
+import 'package:SoundTrek/services/MapService.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geofence_service/geofence_service.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
-import 'resources/colors.dart' as my_colors;
+import '../resources/colors.dart' as my_colors;
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -22,6 +22,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
+  final _mapService = MapService();
   final _activityStreamController = StreamController<Activity>();
   final _geofenceStreamController = StreamController<Geofence>();
 
@@ -124,19 +125,6 @@ class _MapPageState extends State<MapPage> {
     _activityStreamController.sink.add(currActivity);
   }
 
-// This function is to be called when the location has changed.
-//   void _onLocationChanged(Location location) {
-//     print('location: ${location.toJson()}');
-//     latitude = location.latitude;
-//     longitude = location.longitude;
-//
-//     if (_alignPositionOnUpdate) {
-//       setState(() {
-//         mapController.move(LatLng(latitude, longitude), mapController.camera.zoom);
-//       });
-//     }
-//   }
-
 // This function is to be called when a location services status change occurs
 // since the service was started.
   void _onLocationServicesStatusChanged(bool status) {
@@ -157,6 +145,10 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      systemNavigationBarColor: my_colors.Colors.greyBackground, // Set the color you want here
+      systemNavigationBarIconBrightness: Brightness.dark, // Set icon brightness
+    ));
     _loadData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _geofenceService.addGeofenceStatusChangeListener(_onGeofenceStatusChanged);
@@ -172,24 +164,12 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  Future<List<NoiseLevel>> fetchNoiseLevel() async {
-    final response = await http.get(Uri.parse('http://192.168.2.234:5274/'));
-
-    if (response.statusCode == 200) {
-      List<dynamic> jsonData = jsonDecode(response.body);
-      List<NoiseLevel> noiseLevels = jsonData.map((json) => NoiseLevel.fromJson(json)).toList();
-      return noiseLevels;
-    } else {
-      throw Exception('Failed to load noise level');
-    }
-  }
-
   _loadData() async {
-    List<NoiseLevel> noise = await fetchNoiseLevel();
+    List<NoiseLevel> noise = await _mapService.fetchMap();
     setState(() {
       data = noise
           .map((e) =>
-              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 0.1))
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 1))
           .toList();
     });
   }
@@ -238,10 +218,6 @@ class _MapPageState extends State<MapPage> {
       ),
     );
   }
-
-  // Widget _buildContentView() {
-  //   return Scaffold(body: Text('Geofence Service is running...'));
-  // }
 
   Widget _buildContentView() {
     return Scaffold(

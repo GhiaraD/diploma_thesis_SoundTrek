@@ -18,8 +18,8 @@ class NoiseLevel {
 
   factory NoiseLevel.fromJson(Map<String, dynamic> json) {
     return NoiseLevel(
-      latitude: json['lat'],
-      longitude: json['long'],
+      latitude: json['latitude'],
+      longitude: json['longitude'],
       timestamp: DateTime.parse(json['time']),
       LAeq: json['lAeq'],
       LA50: json['lA50'],

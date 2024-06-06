@@ -1,18 +1,16 @@
 import 'package:SoundTrek/pages/BottomNavigation.dart';
+import 'package:SoundTrek/services/AuthenticationService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'authentication/LoginView.dart';
-import 'authentication/RegisterView.dart';
+import 'pages/authentication/LoginView.dart';
+import 'pages/authentication/RegisterView.dart';
 import 'resources/colors.dart' as my_colors;
 import 'resources/themes.dart' as my_themes;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  var email = prefs.getString('email');
-  runApp(MaterialApp(home: email == null ? const MyApp() : const NavigationExample()));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -24,10 +22,52 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'SoundTrek',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: my_colors.Colors.primary),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'SoundTrek'),
+      home: const SplashPage(),
+    );
+  }
+}
+
+class SplashPage extends StatefulWidget {
+  const SplashPage({super.key});
+
+  @override
+  _SplashPageState createState() => _SplashPageState();
+}
+
+class _SplashPageState extends State<SplashPage> {
+  final AuthenticationService apiService = AuthenticationService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    bool isExpired = await apiService.isTokenExpired();
+    if (!isExpired) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const NavigationExample()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MyHomePage(title: 'SoundTrek')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: my_colors.Colors.primary,
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }
@@ -49,6 +89,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       backgroundColor: my_colors.Colors.primary,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: my_colors.Colors.primary,
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: my_colors.Colors.primary,

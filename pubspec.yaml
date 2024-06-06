@@ -26,6 +26,8 @@ dependencies:
   flutter_map_heatmap: ^0.0.7
   syncfusion_flutter_charts: ^25.2.5
   http: ^1.2.1
+  flutter_secure_storage: ^4.2.0
+  jwt_decoder: ^2.0.1
 
 dev_dependencies:
   flutter_test:

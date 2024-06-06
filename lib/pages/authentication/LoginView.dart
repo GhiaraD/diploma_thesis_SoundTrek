@@ -1,10 +1,10 @@
+import 'package:SoundTrek/pages/BottomNavigation.dart';
+import 'package:SoundTrek/resources/colors.dart' as my_colors;
+import 'package:SoundTrek/resources/themes.dart' as my_themes;
+import 'package:SoundTrek/services/AuthenticationService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../pages/BottomNavigation.dart';
-import '../resources/colors.dart' as my_colors;
-import '../resources/themes.dart' as my_themes;
 import 'RegisterView.dart';
 
 class LoginView extends StatefulWidget {
@@ -15,10 +15,25 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
+  final AuthenticationService apiService = AuthenticationService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isButtonEnabled = false;
   bool _isObscuredPassword = true;
+
+  Future<bool> _login() async {
+    try {
+      await apiService.login(
+        _emailController.text,
+        _passwordController.text,
+      );
+      print('Login successful');
+      return true;
+    } catch (e) {
+      print(e);
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -113,12 +128,19 @@ class _LoginViewState extends State<LoginView> {
                   : (my_themes.Themes.buttonHalfPageStyleDisabled),
               onPressed: _isButtonEnabled
                   ? () async {
-                      SharedPreferences prefs = await SharedPreferences.getInstance();
-                      prefs.setString('email', 'useremail@gmail.com');
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const NavigationExample()),
-                      );
+                      bool loggedIn = await _login();
+                      if (loggedIn) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NavigationExample()),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Login failed. Please try again.'),
+                          ),
+                        );
+                      }
                     }
                   : null,
               child: const Text('Log In'),

@@ -1,12 +1,41 @@
-import 'package:SoundTrek/SettingsPage.dart';
+import 'package:SoundTrek/models/UsersInfo.dart';
+import 'package:SoundTrek/pages/SettingsPage.dart';
+import 'package:SoundTrek/services/AuthenticationService.dart';
+import 'package:SoundTrek/services/MapService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../resources/colors.dart' as my_colors;
 import '../resources/themes.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final _mapService = MapService();
+  final _authService = AuthenticationService();
+  UsersInfo userInfo = UsersInfo();
+  int achievements = 0;
+
+  Future<UsersInfo> getUser() async {
+    String? uid = await _authService.getUID();
+    return _mapService.fetchUserInfo(int.parse(uid!));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getUser().then((value) {
+      setState(() {
+        userInfo = value;
+        achievements = 6;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,21 +60,21 @@ class ProfilePage extends StatelessWidget {
         children: [
           Container(
             color: my_colors.Colors.primaryOverlay,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 48.0),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Column(
                     children: [
-                      Text("1500 pts", style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text("Score"),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text("25 days", style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text("Streak"),
+                      Row(
+                        children: [
+                          Text(userInfo.timeMeasured.inMinutes.toString(),
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                          const Text("m", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const Text("Time measured"),
                     ],
                   ),
                 ],
@@ -78,11 +107,20 @@ class ProfilePage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Column(
-                      children: [
-                        Text("10m", style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text("Time measured"),
-                      ],
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(userInfo.score.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                              const Text(" pts", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const Text("Score"),
+                        ],
+                      ),
                     ),
                     Container(
                       width: 100,
@@ -98,16 +136,34 @@ class ProfilePage extends StatelessWidget {
                         color: Colors.grey,
                       ),
                     ),
-                    const Column(
-                      children: [
-                        Text("5", style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text("Zones visited"),
-                      ],
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(userInfo.streak.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                              const Text(" days", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const Text("Streak"),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                userInfo.username.isEmpty ? "Username" : userInfo.username,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black54),
+              ),
+            ],
           ),
           Expanded(
             flex: 1,
@@ -124,41 +180,51 @@ class ProfilePage extends StatelessWidget {
                     height: 350,
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("All time stats:", style: TextStyle(fontSize: 20)),
-                      SizedBox(height: 12),
+                      const Text("All time stats:", style: TextStyle(fontSize: 20)),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Total achievements", style: TextStyle(fontSize: 16)),
-                          Text("27", style: TextStyle(fontSize: 16)),
+                          const Text("Total achievements", style: TextStyle(fontSize: 16)),
+                          Text(achievements.toString(), style: const TextStyle(fontSize: 16)),
                         ],
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Highest streak", style: TextStyle(fontSize: 16)),
-                          Text("35 days", style: TextStyle(fontSize: 16)),
+                          const Text("Highest streak", style: TextStyle(fontSize: 16)),
+                          Row(
+                            children: [
+                              Text(userInfo.allTimeStreak.toString(), style: const TextStyle(fontSize: 16)),
+                              const Text(" days", style: TextStyle(fontSize: 16)),
+                            ],
+                          ),
                         ],
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Total time measured", style: TextStyle(fontSize: 16)),
-                          Text("2h:31m", style: TextStyle(fontSize: 16)),
+                          const Text("Total time measured", style: TextStyle(fontSize: 16)),
+                          Row(
+                            children: [
+                              Text(userInfo.allTimeMeasured.inMinutes.toString(), style: const TextStyle(fontSize: 16)),
+                              const Text("m", style: TextStyle(fontSize: 16)),
+                            ],
+                          ),
                         ],
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
+                          const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text("Most time measured / month", style: TextStyle(fontSize: 16)),
@@ -168,17 +234,22 @@ class ProfilePage extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text("42m", style: TextStyle(fontSize: 16)),
-                              Text("July 2023", style: TextStyle(fontSize: 16)),
+                              Row(
+                                children: [
+                                  Text(userInfo.maxTime.inMinutes.toString(), style: const TextStyle(fontSize: 16)),
+                                  const Text("m", style: TextStyle(fontSize: 16)),
+                                ],
+                              ),
+                              Text(userInfo.monthMaxTime.toString(), style: const TextStyle(fontSize: 16)),
                             ],
                           ),
                         ],
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
+                          const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text("Highest score / month", style: TextStyle(fontSize: 16)),
@@ -188,8 +259,13 @@ class ProfilePage extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text("2600 pts", style: TextStyle(fontSize: 16)),
-                              Text("July 2023", style: TextStyle(fontSize: 16)),
+                              Row(
+                                children: [
+                                  Text(userInfo.maxScore.toString(), style: const TextStyle(fontSize: 16)),
+                                  const Text(" pts", style: TextStyle(fontSize: 16)),
+                                ],
+                              ),
+                              Text(userInfo.monthMaxTime.toString(), style: const TextStyle(fontSize: 16)),
                             ],
                           ),
                         ],
