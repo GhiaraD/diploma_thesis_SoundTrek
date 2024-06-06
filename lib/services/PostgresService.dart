@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:SoundTrek/models/NoiseLevel.dart';
 import 'package:SoundTrek/models/UsersInfo.dart';
-import 'package:SoundTrek/resources/endpoints.dart';
+import 'package:SoundTrek/resources/Endpoints.dart';
 import 'package:http/http.dart' as http;
 
-class MapService {
+class PostgresService {
   Future<List<NoiseLevel>> fetchMap() async {
     final response = await http.get(Uri.parse(Endpoints.latestMap));
 

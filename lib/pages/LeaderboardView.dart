@@ -1,3 +1,6 @@
+import 'package:SoundTrek/models/UsersInfo.dart';
+import 'package:SoundTrek/services/AuthenticationService.dart';
+import 'package:SoundTrek/services/PostgresService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -12,6 +15,10 @@ class LeaderboardView extends StatefulWidget {
 }
 
 class _LeaderboardViewState extends State<LeaderboardView> {
+  final _mapService = PostgresService();
+  final _authService = AuthenticationService();
+  List<UsersInfo> users = [];
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(

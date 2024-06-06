@@ -1,7 +1,7 @@
 import 'package:SoundTrek/models/UsersInfo.dart';
 import 'package:SoundTrek/pages/SettingsPage.dart';
 import 'package:SoundTrek/services/AuthenticationService.dart';
-import 'package:SoundTrek/services/MapService.dart';
+import 'package:SoundTrek/services/PostgresService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -16,7 +16,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _mapService = MapService();
+  final _mapService = PostgresService();
   final _authService = AuthenticationService();
   UsersInfo userInfo = UsersInfo();
   int achievements = 0;

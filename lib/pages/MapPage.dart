@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:SoundTrek/models/NoiseLevel.dart';
 import 'package:SoundTrek/pages/StatsPage.dart';
-import 'package:SoundTrek/services/MapService.dart';
+import 'package:SoundTrek/services/PostgresService.dart';
+import 'package:audio_streamer/audio_streamer.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geofence_service/geofence_service.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -22,21 +23,17 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
-  final _mapService = MapService();
-  final _activityStreamController = StreamController<Activity>();
+  // Geofences
   final _geofenceStreamController = StreamController<Geofence>();
-
   final _geofenceService = GeofenceService.instance.setup(
-      interval: 1000,
-      accuracy: 100,
+      interval: 2000,
+      accuracy: 50,
       loiteringDelayMs: 60000,
-      statusChangeDelayMs: 10000,
+      statusChangeDelayMs: 5000,
       useActivityRecognition: true,
       allowMockLocations: false,
       printDevLog: true,
       geofenceRadiusSortType: GeofenceRadiusSortType.DESC);
-
-  // Create a [Geofence] list.
   final _geofenceList = <Geofence>[
     Geofence(
       id: 'place_1',
@@ -86,8 +83,15 @@ class _MapPageState extends State<MapPage> {
         GeofenceRadius(id: 'radius_1000m', length: 3550),
       ],
     ),
+    Geofence(
+      id: 'place_7',
+      latitude: 44.4445,
+      longitude: 26.0549,
+      radius: [
+        GeofenceRadius(id: 'radius_1000m', length: 500),
+      ],
+    ),
   ];
-
   var _geofenceColors = <Color>[
     Colors.yellow.withOpacity(0.35),
     Colors.red.withOpacity(0.2),
@@ -95,18 +99,19 @@ class _MapPageState extends State<MapPage> {
     Colors.blue.withOpacity(0.2),
     Colors.deepPurple.withOpacity(0.2),
     Colors.orange.withOpacity(0.2),
+    Colors.purpleAccent.withOpacity(0.2),
   ];
+  final _geofenceMultipliers = <double>[1.1, 1.2, 1.3, 1.4, 1.5, 1.2, 1.6];
+  double multiplier = 1.0;
+
+  // backend services
+  final _postgresService = PostgresService();
+  final _activityStreamController = StreamController<Activity>();
 
   // map
   final mapController = MapController();
   AlignOnUpdate _alignPositionOnUpdate = AlignOnUpdate.always;
   final StreamController<double?> _alignPositionStreamController = StreamController<double?>();
-
-  // heatmap
-  List<WeightedLatLng> data = [];
-  final StreamController<void> _rebuildStream = StreamController.broadcast();
-
-  // marker
   LatLng _markerPoz = const LatLng(-90, -180);
 
   // This function is to be called when the geofence status is changed.
@@ -115,6 +120,15 @@ class _MapPageState extends State<MapPage> {
     print('geofence: ${geofence.toJson()}');
     print('geofenceRadius: ${geofenceRadius.toJson()}');
     print('geofenceStatus: ${geofenceStatus.toString()}');
+    if (geofenceStatus == GeofenceStatus.ENTER) {
+      (setState(() {
+        multiplier = _geofenceMultipliers[_geofenceList.indexOf(geofence)];
+      }));
+    } else if (geofenceStatus == GeofenceStatus.EXIT) {
+      (setState(() {
+        multiplier = 1.0;
+      }));
+    }
     _geofenceStreamController.sink.add(geofence);
   }
 
@@ -142,6 +156,74 @@ class _MapPageState extends State<MapPage> {
     print('ErrorCode: $errorCode');
   }
 
+  // heatmap
+  List<WeightedLatLng> heatmapData = [];
+  final StreamController<void> _rebuildStream = StreamController.broadcast();
+
+  _loadData() async {
+    List<NoiseLevel> noise = await _postgresService.fetchMap();
+    setState(() {
+      heatmapData = noise
+          .map((e) =>
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 1))
+          .toList();
+    });
+  }
+
+  // recording
+  int? sampleRate;
+  bool isRecording = false;
+  List<double> audio = [];
+  ValueNotifier<double> recordingTime = ValueNotifier<double>(0.0);
+  final _timeController = TextEditingController();
+  StreamSubscription<List<double>>? audioSubscription;
+  List<double> allAudio = [];
+  int? cutoffHigh = 20000; // High pass filter cutoff frequency in Hz
+  int? cutoffLow = 20; // Low pass filter cutoff frequency in Hz
+
+  void onAudio(List<double> buffer) async {
+    audio.addAll(buffer);
+
+    // Get the actual sampling rate, if not already known.
+    sampleRate ??= await AudioStreamer().actualSampleRate;
+    recordingTime.value = audio.length / sampleRate!;
+
+    if (recordingTime.value >= 60) {
+      // send data to server
+      audio = [];
+    }
+
+    // setState(() => allAudio = buffer);
+  }
+
+  /// Call-back on error.
+  void handleRecordingError(Object error) {
+    setState(() => isRecording = false);
+    if (kDebugMode) {
+      print(error);
+    }
+  }
+
+  /// Start audio sampling.
+  void startRecording() async {
+    // Set the sampling rate - works only on Android.
+    AudioStreamer().sampleRate = AudioStreamer.DEFAULT_SAMPLING_RATE;
+
+    // Start listening to the audio stream.
+    audioSubscription = AudioStreamer().audioStream.listen(onAudio, onError: handleRecordingError);
+
+    setState(() => isRecording = true);
+  }
+
+  /// Stop audio sampling.
+  void stopRecording() async {
+    audioSubscription?.cancel();
+    audio = [];
+    allAudio = [];
+    recordingTime.value = 0.0;
+    setState(() => isRecording = false);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -164,16 +246,6 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  _loadData() async {
-    List<NoiseLevel> noise = await _mapService.fetchMap();
-    setState(() {
-      data = noise
-          .map((e) =>
-              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 1))
-          .toList();
-    });
-  }
-
   @override
   void dispose() {
     _geofenceService.removeGeofenceStatusChangeListener(_onGeofenceStatusChanged);
@@ -186,6 +258,8 @@ class _MapPageState extends State<MapPage> {
 
     _alignPositionStreamController.close();
     _rebuildStream.close();
+
+    stopRecording();
     super.dispose();
   }
 
@@ -298,6 +372,12 @@ class _MapPageState extends State<MapPage> {
                     useRadiusInMeter: true,
                     color: _geofenceColors[5],
                   ),
+                  CircleMarker(
+                    point: LatLng(_geofenceList[6].latitude, _geofenceList[6].longitude),
+                    radius: _geofenceList[6].radius[0].length,
+                    useRadiusInMeter: true,
+                    color: _geofenceColors[6],
+                  ),
                 ],
               ),
               CurrentLocationLayer(
@@ -315,10 +395,10 @@ class _MapPageState extends State<MapPage> {
                   markerDirection: MarkerDirection.heading,
                 ),
               ),
-              if (data.isNotEmpty)
+              if (heatmapData.isNotEmpty)
                 HeatMapLayer(
                   maxZoom: 18,
-                  heatMapDataSource: InMemoryHeatMapDataSource(data: data),
+                  heatMapDataSource: InMemoryHeatMapDataSource(data: heatmapData),
                   heatMapOptions: HeatMapOptions(
                     minOpacity: 1,
                     blurFactor: 0.5,
@@ -350,50 +430,64 @@ class _MapPageState extends State<MapPage> {
             ],
           ),
           Positioned(
-            // alignment: Alignment.bottomCenter,
-            // widthFactor: 2.9,
             bottom: 20,
             right: MediaQuery.of(context).size.width / 2 - 75,
             child: Padding(
-              padding: const EdgeInsets.all(0.0),
-              child: TextButton(
-                style: ButtonStyle(
-                  // elevation: MaterialStateProperty.all<double>(7),
-                  // shadowColor: MaterialStateProperty.all<Color>(Colors.black),
-                  padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                  backgroundColor: MaterialStateProperty.all<Color>(my_colors.Colors.greyBackground),
-                  shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                onPressed: () async {
-                  Fluttertoast.showToast(
-                    msg: 'Start Contributing pressed!',
-                    toastLength: Toast.LENGTH_SHORT,
-                  );
-                },
-                child: const Row(
-                  children: [
-                    Icon(Icons.mic, color: my_colors.Colors.primary),
-                    Column(
-                      children: [
-                        Text(
-                          'Start contributing',
-                          style: TextStyle(color: my_colors.Colors.primary),
+                padding: const EdgeInsets.all(0.0),
+                child: ValueListenableBuilder<double>(
+                    valueListenable: recordingTime,
+                    builder: (BuildContext context, double value, Widget? child) {
+                      return TextButton(
+                        style: ButtonStyle(
+                          // elevation: MaterialStateProperty.all<double>(7),
+                          // shadowColor: MaterialStateProperty.all<Color>(Colors.black),
+                          padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
+                              const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                          backgroundColor: MaterialStateProperty.all<Color>(my_colors.Colors.greyBackground),
+                          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
                         ),
-                        Text(
-                          '+100 pts/min',
-                          style: TextStyle(color: my_colors.Colors.primary),
-                        ),
-                      ],
-                    ),
-                  ],
-                ), // Needed when having multiple FABs
-              ),
-            ),
+                        onPressed: () async {
+                          isRecording ? stopRecording() : startRecording();
+                        },
+                        child: Row(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4.0),
+                              child: Icon(isRecording ? Icons.square : Icons.mic, color: my_colors.Colors.primary),
+                            ),
+                            Column(
+                              children: [
+                                Text(
+                                  isRecording ? recordingTime.value.toStringAsFixed(2) : 'Start contributing',
+                                  style: const TextStyle(color: my_colors.Colors.primary),
+                                ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      '+',
+                                      style: TextStyle(color: my_colors.Colors.primary),
+                                    ),
+                                    Text(
+                                      (100 * multiplier).toStringAsFixed(0),
+                                      style: const TextStyle(color: my_colors.Colors.primary),
+                                    ),
+                                    const Text(
+                                      ' pts/min',
+                                      style: TextStyle(color: my_colors.Colors.primary),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ), // Needed when having multiple FABs
+                      );
+                    })),
           ),
           Positioned(
             top: 32,
@@ -445,6 +539,7 @@ class _MapPageState extends State<MapPage> {
                       _geofenceColors[3] = Colors.blue.withOpacity(0);
                       _geofenceColors[4] = Colors.deepPurple.withOpacity(0);
                       _geofenceColors[5] = Colors.orange.withOpacity(0);
+                      _geofenceColors[5] = Colors.orange.withOpacity(0);
                     });
                   } else {
                     setState(() {
@@ -454,6 +549,7 @@ class _MapPageState extends State<MapPage> {
                       _geofenceColors[3] = Colors.blue.withOpacity(0.2);
                       _geofenceColors[4] = Colors.deepPurple.withOpacity(0.2);
                       _geofenceColors[5] = Colors.orange.withOpacity(0.2);
+                      _geofenceColors[5] = Colors.purpleAccent.withOpacity(0.2);
                     });
                   }
                 },

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:SoundTrek/models/JWT.dart';
-import 'package:SoundTrek/resources/endpoints.dart';
+import 'package:SoundTrek/resources/Endpoints.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
