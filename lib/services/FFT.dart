@@ -42,7 +42,7 @@ List<double> applyHighPassFilter(List<double> data, double cutoffFrequency, doub
   return filteredData;
 }
 
-List<double> applyBandpassFilter(List<double> data, double lowCutoff, double highCutoff, double samplingRate) {
+List<double> applyBandpassFilter(List<double> data, double lowCutoff, double highCutoff, int samplingRate) {
   int N = data.length;
 
   if (lowCutoff <= 0 || highCutoff >= samplingRate / 2 || lowCutoff >= highCutoff) {
@@ -98,4 +98,61 @@ List<double> convertToSPL(List<double> normalizedAudio, {double maxSPL = 120.0})
     }
   }
   return splValues;
+}
+
+List<double> convertToSPL2(List<double> normalizedAudio, {double maxSPL = 120.0}) {
+  double referencePressure = 20e-6; // Reference pressure in Pascals (20 μPa)
+  double pMax = referencePressure * pow(10, maxSPL / 20); // Max pressure at full scale amplitude ±1
+
+  List<double> splValues = [];
+  for (double amplitude in normalizedAudio) {
+    if (amplitude.abs() > 0) {
+      // Check for non-zero amplitude
+      double p = pMax * amplitude; // Calculate pressure for this sample
+      double spl = 20 * log(p / referencePressure) / ln10; // Calculate SPL in dB
+      splValues.add(spl);
+    } else {
+      splValues.add(0); // Substitute zero for log of zero amplitude
+    }
+  }
+  return splValues;
+}
+
+double calculateLAeq(List<double> splValues) {
+  if (splValues.isEmpty) return double.nan;
+
+  double sum = 0.0;
+  int validCount = 0;
+
+  for (double spl in splValues) {
+    if (spl.isFinite) {
+      sum += pow(10, spl / 10);
+      validCount++;
+    }
+  }
+
+  if (validCount == 0) return double.nan;
+
+  double mean = sum / validCount;
+  double laeq = 10 * log(mean) / ln10;
+  return laeq;
+}
+
+double calculateLA50(List<double> splValues) {
+  // Filter out non-finite values
+  List<double> finiteValues = splValues.where((value) => value.isFinite).toList();
+
+  // Sort the filtered values
+  List<double> sortedSPL = List.from(finiteValues)..sort();
+
+  int n = sortedSPL.length;
+  if (n == 0) return double.nan; // Handle case with no valid values
+
+  if (n % 2 == 0) {
+    // Even number of values, take the average of the two middle values
+    return (sortedSPL[n ~/ 2 - 1] + sortedSPL[n ~/ 2]) / 2;
+  } else {
+    // Odd number of values, take the middle value
+    return sortedSPL[n ~/ 2];
+  }
 }

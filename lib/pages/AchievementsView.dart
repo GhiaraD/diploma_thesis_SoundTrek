@@ -12,6 +12,21 @@ class AchievementView extends StatefulWidget {
 }
 
 class _AchievementViewState extends State<AchievementView> {
+  bool isLoading = true;
+
+  Future<void> fetchData() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -38,14 +53,16 @@ class _AchievementViewState extends State<AchievementView> {
         ),
         body: Stack(
           children: [
-            const TabBarView(
-              children: [
-                AchievementList(),
-                AchievementList(),
-                AchievementList(),
-                AchievementList(),
-              ],
-            ),
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : const TabBarView(
+                    children: [
+                      AchievementList(),
+                      AchievementList(),
+                      AchievementList(),
+                      AchievementList(),
+                    ],
+                  ),
             Positioned(
               top: 0,
               child: CustomPaint(

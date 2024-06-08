@@ -2,7 +2,6 @@ import 'package:SoundTrek/models/UsersInfo.dart';
 import 'package:SoundTrek/services/AuthenticationService.dart';
 import 'package:SoundTrek/services/PostgresService.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../resources/colors.dart' as my_colors;
 import '../resources/themes.dart';
@@ -15,9 +14,57 @@ class LeaderboardView extends StatefulWidget {
 }
 
 class _LeaderboardViewState extends State<LeaderboardView> {
-  final _mapService = PostgresService();
+  final _postgresService = PostgresService();
   final _authService = AuthenticationService();
-  List<UsersInfo> users = [];
+  List<UsersInfo> topScorers = [];
+  List<UsersInfo> topStreaks = [];
+  List<UsersInfo> topMaxScores = [];
+  List<UsersInfo> topAllTimeStreaks = [];
+  LeaderboardTime leaderboardTime = LeaderboardTime.thisMonth;
+
+  // UsersInfo userInfo = UsersInfo();
+  bool isLoading = true;
+
+  Future<UsersInfo> getUser() async {
+    String? uid = await _authService.getUID();
+    return _postgresService.fetchUserInfo(int.parse(uid!));
+  }
+
+  Future<List<UsersInfo>> getLeaderboardByScore() async {
+    return _postgresService.getTopUsersByScore();
+  }
+
+  Future<List<UsersInfo>> getLeaderboardByMaxScore() async {
+    return _postgresService.getTopUsersByMaxScore();
+  }
+
+  Future<List<UsersInfo>> getLeaderboardByStreak() async {
+    return _postgresService.getTopUsersByStreak();
+  }
+
+  Future<List<UsersInfo>> getLeaderboardByAllTimeStreak() async {
+    return _postgresService.getTopUsersByAllTimeStreak();
+  }
+
+  Future<void> fetchData() async {
+    final topScorers = await _postgresService.getTopUsersByScore();
+    final topStreaks = await _postgresService.getTopUsersByStreak();
+    final topMaxScores = await _postgresService.getTopUsersByMaxScore();
+    final topAllTimeStreaks = await _postgresService.getTopUsersByAllTimeStreak();
+    setState(() {
+      this.topScorers = topScorers;
+      this.topStreaks = topStreaks;
+      this.topMaxScores = topMaxScores;
+      this.topAllTimeStreaks = topAllTimeStreaks;
+      isLoading = false;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +82,16 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               Row(
                 children: [
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      setState(() {
+                        leaderboardTime = LeaderboardTime.thisMonth;
+                      });
+                    },
+                    style: ButtonStyle(
+                      backgroundColor: leaderboardTime == LeaderboardTime.thisMonth
+                          ? const MaterialStatePropertyAll<Color>(my_colors.Colors.greyBackground)
+                          : const MaterialStatePropertyAll<Color>(my_colors.Colors.primaryOverlay),
+                    ),
                     child: const Text("This month",
                         style: TextStyle(
                           fontSize: 10,
@@ -43,7 +99,16 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                         )),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      setState(() {
+                        leaderboardTime = LeaderboardTime.allTime;
+                      });
+                    },
+                    style: ButtonStyle(
+                      backgroundColor: leaderboardTime == LeaderboardTime.allTime
+                          ? const MaterialStatePropertyAll<Color>(my_colors.Colors.greyBackground)
+                          : const MaterialStatePropertyAll<Color>(my_colors.Colors.primaryOverlay),
+                    ),
                     child: const Text(
                       "All time",
                       style: TextStyle(
@@ -69,12 +134,19 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         ),
         body: Stack(
           children: [
-            const TabBarView(
-              children: [
-                LeaderboardList(),
-                LeaderboardList(),
-              ],
-            ),
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : TabBarView(
+                    children: leaderboardTime == LeaderboardTime.thisMonth
+                        ? [
+                            LeaderboardList(users: topScorers, leaderboardType: LeaderboardType.score),
+                            LeaderboardList(users: topStreaks, leaderboardType: LeaderboardType.streak),
+                          ]
+                        : [
+                            LeaderboardList(users: topMaxScores, leaderboardType: LeaderboardType.maxScore),
+                            LeaderboardList(users: topAllTimeStreaks, leaderboardType: LeaderboardType.allTimeStreak),
+                          ],
+                  ),
             Positioned(
               top: 0,
               child: CustomPaint(
@@ -90,33 +162,56 @@ class _LeaderboardViewState extends State<LeaderboardView> {
 }
 
 class LeaderboardList extends StatelessWidget {
-  const LeaderboardList({super.key});
+  const LeaderboardList({super.key, required this.users, required this.leaderboardType});
+
+  final List<UsersInfo> users;
+  final LeaderboardType leaderboardType;
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      itemCount: 10,
+      itemCount: users.length,
       itemBuilder: (context, index) {
+        final user = users[index];
+        String trailingText;
+        switch (leaderboardType) {
+          case LeaderboardType.score:
+            trailingText = "${user.score} pts";
+            break;
+          case LeaderboardType.streak:
+            trailingText = "${user.streak} days";
+            break;
+          case LeaderboardType.maxScore:
+            trailingText = "${user.maxScore} pts";
+            break;
+          case LeaderboardType.allTimeStreak:
+            trailingText = "${user.allTimeStreak} days";
+            break;
+        }
+
         return Card(
           child: ListTile(
             tileColor: my_colors.Colors.greyBackground,
             leading: Text((index + 1).toString()),
             title: Row(
               children: [
-                SvgPicture.asset(
-                  'lib/assets/images/undraw_test.svg',
-                  semanticsLabel: 'My SVG Image',
-                  height: 25,
-                  width: 20,
+                const Icon(
+                  Icons.person,
+                  size: 25,
+                  color: my_colors.Colors.primary,
                 ),
                 const SizedBox(width: 10),
-                const Text("Name Surname"),
+                Text(user.username),
               ],
             ),
-            trailing: const Text("10000"),
+            trailing: Text(trailingText),
           ),
         );
       },
     );
   }
 }
+
+enum LeaderboardType { score, streak, maxScore, allTimeStreak }
+
+enum LeaderboardTime { thisMonth, allTime }

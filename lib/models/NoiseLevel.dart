@@ -4,8 +4,8 @@ class NoiseLevel {
   final num latitude;
   final num longitude;
   final DateTime timestamp;
-  final num LAeq;
-  final num LA50;
+  num LAeq;
+  num LA50;
   final num measurementsCount;
 
   NoiseLevel(
@@ -29,8 +29,8 @@ class NoiseLevel {
 
   Map<String, dynamic> toJson() {
     return {
-      'lat': latitude,
-      'long': longitude,
+      'latitude': latitude,
+      'longitude': longitude,
       'time': timestamp.toIso8601String(),
       'lAeq': LAeq,
       'lA50': LA50,

@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:SoundTrek/models/NoiseLevel.dart';
+import 'package:SoundTrek/models/UsersInfo.dart';
 import 'package:SoundTrek/pages/StatsPage.dart';
+import 'package:SoundTrek/services/AuthenticationService.dart';
+import 'package:SoundTrek/services/FFT.dart';
 import 'package:SoundTrek/services/PostgresService.dart';
 import 'package:audio_streamer/audio_streamer.dart';
 import 'package:flutter/foundation.dart';
@@ -10,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geofence_service/geofence_service.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -78,17 +82,17 @@ class _MapPageState extends State<MapPage> {
     Geofence(
       id: 'place_6',
       latitude: 44.4338,
-      longitude: 26.0022,
+      longitude: 26.0000,
       radius: [
         GeofenceRadius(id: 'radius_1000m', length: 3550),
       ],
     ),
     Geofence(
       id: 'place_7',
-      latitude: 44.4445,
-      longitude: 26.0549,
+      latitude: 44.4395,
+      longitude: 26.0529,
       radius: [
-        GeofenceRadius(id: 'radius_1000m', length: 500),
+        GeofenceRadius(id: 'radius_1000m', length: 700),
       ],
     ),
   ];
@@ -105,6 +109,7 @@ class _MapPageState extends State<MapPage> {
   double multiplier = 1.0;
 
   // backend services
+  final _authService = AuthenticationService();
   final _postgresService = PostgresService();
   final _activityStreamController = StreamController<Activity>();
 
@@ -130,6 +135,10 @@ class _MapPageState extends State<MapPage> {
       }));
     }
     _geofenceStreamController.sink.add(geofence);
+  }
+
+  void _onLocationChanged(Location location) {
+    myLocation = LatLng(location.latitude, location.longitude);
   }
 
 // This function is to be called when the activity has changed.
@@ -174,12 +183,14 @@ class _MapPageState extends State<MapPage> {
   int? sampleRate;
   bool isRecording = false;
   List<double> audio = [];
+  List<double> latestMinuteAudio = [];
   ValueNotifier<double> recordingTime = ValueNotifier<double>(0.0);
-  final _timeController = TextEditingController();
   StreamSubscription<List<double>>? audioSubscription;
-  List<double> allAudio = [];
-  int? cutoffHigh = 20000; // High pass filter cutoff frequency in Hz
-  int? cutoffLow = 20; // Low pass filter cutoff frequency in Hz
+  double cutoffHigh = 20000; // High pass filter cutoff frequency in Hz
+  double cutoffLow = 20; // Low pass filter cutoff frequency in Hz
+  int minutesPassed = 1;
+  bool processing = false;
+  late LatLng myLocation;
 
   void onAudio(List<double> buffer) async {
     audio.addAll(buffer);
@@ -188,12 +199,50 @@ class _MapPageState extends State<MapPage> {
     sampleRate ??= await AudioStreamer().actualSampleRate;
     recordingTime.value = audio.length / sampleRate!;
 
-    if (recordingTime.value >= 60) {
-      // send data to server
-      audio = [];
-    }
+    latestMinuteAudio.addAll(buffer);
 
-    // setState(() => allAudio = buffer);
+    if (recordingTime.value > 60 * minutesPassed && !processing) {
+      // Send data to server on a separate isolate
+      processing = true;
+      minutesPassed++;
+      NoiseLevel noiseLevel = NoiseLevel(
+          latitude: double.parse(myLocation.latitude.toStringAsFixed(4)),
+          longitude: double.parse(myLocation.longitude.toStringAsFixed(4)),
+          LAeq: 0.0,
+          LA50: 0.0,
+          timestamp: DateTime.now(),
+          measurementsCount: 1);
+
+      final arg = {
+        "noiseLevel": noiseLevel.toJson(),
+        "latestMinuteAudio": latestMinuteAudio,
+      };
+
+      print(latestMinuteAudio.length);
+      print(latestMinuteAudio[0]);
+
+      // Call compute with serialized arguments
+      compute(_filterAndUpload, arg);
+      latestMinuteAudio = [];
+      processing = false;
+    }
+  }
+
+  static Future<void> _filterAndUpload(Map<String, dynamic> arg) async {
+    final postgresService = PostgresService();
+    final noiseLevel = NoiseLevel.fromJson(arg['noiseLevel']);
+    var localLatestMinuteAudio = List<double>.from(arg['latestMinuteAudio']);
+
+    localLatestMinuteAudio =
+        applyBandpassFilter(localLatestMinuteAudio, 20, 20000, AudioStreamer.DEFAULT_SAMPLING_RATE);
+    localLatestMinuteAudio = convertToSPL2(localLatestMinuteAudio);
+    print(localLatestMinuteAudio.length);
+    print(localLatestMinuteAudio[0]);
+
+    noiseLevel.LAeq = double.parse(calculateLAeq(localLatestMinuteAudio).toStringAsFixed(2));
+    noiseLevel.LA50 = double.parse(calculateLA50(localLatestMinuteAudio).toStringAsFixed(2));
+
+    await postgresService.postNoiseLevel(noiseLevel);
   }
 
   /// Call-back on error.
@@ -219,9 +268,21 @@ class _MapPageState extends State<MapPage> {
   void stopRecording() async {
     audioSubscription?.cancel();
     audio = [];
-    allAudio = [];
+    latestMinuteAudio = [];
     recordingTime.value = 0.0;
     setState(() => isRecording = false);
+    _postgresService.updateUserScore(userInfo.userId, (100 * multiplier * (minutesPassed - 1)).toInt());
+    _postgresService.updateUserStreak(userInfo.userId, userInfo.streak + 1);
+    _postgresService.updateUserTimeMeasured(userInfo.userId, userInfo.timeMeasured.inMinutes + minutesPassed - 1);
+    _postgresService.updateUserAllTimeMeasured(userInfo.userId, userInfo.allTimeMeasured.inMinutes + minutesPassed - 1);
+  }
+
+  // userInfo
+  UsersInfo userInfo = UsersInfo();
+
+  Future<UsersInfo> getUser() async {
+    String? uid = await _authService.getUID();
+    return _postgresService.fetchUserInfo(int.parse(uid!));
   }
 
   @override
@@ -234,7 +295,7 @@ class _MapPageState extends State<MapPage> {
     _loadData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _geofenceService.addGeofenceStatusChangeListener(_onGeofenceStatusChanged);
-      // _geofenceService.addLocationChangeListener(_onLocationChanged);
+      _geofenceService.addLocationChangeListener(_onLocationChanged);
       _geofenceService.addLocationServicesStatusChangeListener(_onLocationServicesStatusChanged);
       _geofenceService.addActivityChangeListener(_onActivityChanged);
       _geofenceService.addStreamErrorListener(_onError);
@@ -242,6 +303,9 @@ class _MapPageState extends State<MapPage> {
 
       _alignPositionOnUpdate = AlignOnUpdate.always;
 
+      getUser().then((value) {
+        userInfo = value;
+      });
       // _alignPositionStreamController = StreamController<double?>();
     });
   }
@@ -249,7 +313,7 @@ class _MapPageState extends State<MapPage> {
   @override
   void dispose() {
     _geofenceService.removeGeofenceStatusChangeListener(_onGeofenceStatusChanged);
-    // _geofenceService.removeLocationChangeListener(_onLocationChanged);
+    _geofenceService.removeLocationChangeListener(_onLocationChanged);
     _geofenceService.removeLocationServicesStatusChangeListener(_onLocationServicesStatusChanged);
     _geofenceService.removeActivityChangeListener(_onActivityChanged);
     _geofenceService.removeStreamErrorListener(_onError);
@@ -300,12 +364,14 @@ class _MapPageState extends State<MapPage> {
           FlutterMap(
             mapController: mapController,
             options: MapOptions(
-              onTap: (point, latlng) {
+              onTap: (point, latlng) async {
                 setState(() {
                   _markerPoz = LatLng(double.parse(latlng.latitude.toStringAsFixed(4)),
                       double.parse(latlng.longitude.toStringAsFixed(4)));
                 });
-                modalBottomSheet();
+                NoiseLevel noiseLevel =
+                    await _postgresService.fetchNoiseLevel(_markerPoz.latitude, _markerPoz.longitude);
+                modalBottomSheet(noiseLevel);
               },
               initialZoom: 10.5,
               onPositionChanged: (MapPosition position, bool hasGesture) {
@@ -452,6 +518,9 @@ class _MapPageState extends State<MapPage> {
                         ),
                         onPressed: () async {
                           isRecording ? stopRecording() : startRecording();
+                          setState(() {
+                            _loadData();
+                          });
                         },
                         child: Row(
                           children: [
@@ -459,30 +528,37 @@ class _MapPageState extends State<MapPage> {
                               padding: const EdgeInsets.only(right: 4.0),
                               child: Icon(isRecording ? Icons.square : Icons.mic, color: my_colors.Colors.primary),
                             ),
-                            Column(
-                              children: [
-                                Text(
-                                  isRecording ? recordingTime.value.toStringAsFixed(2) : 'Start contributing',
-                                  style: const TextStyle(color: my_colors.Colors.primary),
-                                ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Text(
-                                      '+',
-                                      style: TextStyle(color: my_colors.Colors.primary),
-                                    ),
-                                    Text(
-                                      (100 * multiplier).toStringAsFixed(0),
-                                      style: const TextStyle(color: my_colors.Colors.primary),
-                                    ),
-                                    const Text(
-                                      ' pts/min',
-                                      style: TextStyle(color: my_colors.Colors.primary),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                            //111.8 72.8
+                            Padding(
+                              padding:
+                                  isRecording ? const EdgeInsets.only(left: 32, right: 32) : const EdgeInsets.all(0.0),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    isRecording ? "${recordingTime.value.toStringAsFixed(2)} s" : 'Start contributing',
+                                    style: const TextStyle(color: my_colors.Colors.primary),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Text(
+                                        '+',
+                                        style: TextStyle(color: my_colors.Colors.primary),
+                                      ),
+                                      Text(
+                                        isRecording
+                                            ? ((100 * multiplier) * (minutesPassed - 1)).toStringAsFixed(0)
+                                            : (100 * multiplier).toStringAsFixed(0),
+                                        style: const TextStyle(color: my_colors.Colors.primary),
+                                      ),
+                                      Text(
+                                        isRecording ? " pts" : ' pts/min',
+                                        style: const TextStyle(color: my_colors.Colors.primary),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ), // Needed when having multiple FABs
@@ -539,7 +615,7 @@ class _MapPageState extends State<MapPage> {
                       _geofenceColors[3] = Colors.blue.withOpacity(0);
                       _geofenceColors[4] = Colors.deepPurple.withOpacity(0);
                       _geofenceColors[5] = Colors.orange.withOpacity(0);
-                      _geofenceColors[5] = Colors.orange.withOpacity(0);
+                      _geofenceColors[6] = Colors.orange.withOpacity(0);
                     });
                   } else {
                     setState(() {
@@ -549,7 +625,7 @@ class _MapPageState extends State<MapPage> {
                       _geofenceColors[3] = Colors.blue.withOpacity(0.2);
                       _geofenceColors[4] = Colors.deepPurple.withOpacity(0.2);
                       _geofenceColors[5] = Colors.orange.withOpacity(0.2);
-                      _geofenceColors[5] = Colors.purpleAccent.withOpacity(0.2);
+                      _geofenceColors[6] = Colors.purpleAccent.withOpacity(0.2);
                     });
                   }
                 },
@@ -620,10 +696,10 @@ class _MapPageState extends State<MapPage> {
                     const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("30"),
+                        Text("<30"),
                         Text("50"),
-                        Text("70"),
-                        Text("90 db(A)"),
+                        Text("80"),
+                        Text(">100 db(A)"),
                       ],
                     ),
                   ],
@@ -637,7 +713,7 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Future<void> modalBottomSheet() {
+  Future<void> modalBottomSheet(NoiseLevel noiseLevel) {
     return showModalBottomSheet<void>(
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -676,11 +752,14 @@ class _MapPageState extends State<MapPage> {
                           )),
                     ],
                   ),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.access_time, color: my_colors.Colors.primary),
-                      Text(' June 24, 2024 4:55PM',
-                          style: TextStyle(
+                      const Padding(
+                        padding: EdgeInsets.only(right: 5.0),
+                        child: Icon(Icons.access_time, color: my_colors.Colors.primary),
+                      ),
+                      Text(noiseLevel.timestamp.toString(),
+                          style: const TextStyle(
                             fontSize: 20,
                             color: Colors.black54,
                           )),
@@ -690,17 +769,17 @@ class _MapPageState extends State<MapPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Column(
+                      Column(
                         children: [
                           Row(
                             children: [
-                              Text('LAeq: ',
+                              const Text('LAeq: ',
                                   style: TextStyle(
                                     fontSize: 20,
                                     color: my_colors.Colors.primary,
                                   )),
-                              Text('81.6 dB(A)',
-                                  style: TextStyle(
+                              Text(noiseLevel.LAeq.toString(),
+                                  style: const TextStyle(
                                     fontSize: 20,
                                     color: Colors.black54,
                                   )),
@@ -708,13 +787,13 @@ class _MapPageState extends State<MapPage> {
                           ),
                           Row(
                             children: [
-                              Text('LA50: ',
+                              const Text('LA50: ',
                                   style: TextStyle(
                                     fontSize: 20,
                                     color: my_colors.Colors.primary,
                                   )),
-                              Text('68.6 dB(A)',
-                                  style: TextStyle(
+                              Text(noiseLevel.LA50.toString(),
+                                  style: const TextStyle(
                                     fontSize: 20,
                                     color: Colors.black54,
                                   )),
@@ -738,10 +817,22 @@ class _MapPageState extends State<MapPage> {
                           ),
                           onPressed: () {
                             // Implement what happens when you press 'History'
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => StatsPage(_markerPoz)),
-                            );
+                            if (noiseLevel.LAeq != 0.0) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => StatsPage(_markerPoz)),
+                              );
+                            } else {
+                              Fluttertoast.showToast(
+                                msg: 'No data available for this location',
+                                toastLength: Toast.LENGTH_SHORT,
+                                gravity: ToastGravity.BOTTOM,
+                                timeInSecForIosWeb: 1,
+                                backgroundColor: my_colors.Colors.greyDark,
+                                textColor: my_colors.Colors.white,
+                                fontSize: 16.0,
+                              );
+                            }
                           },
                           child: const Text(
                             'See graphs',
@@ -821,7 +912,7 @@ class _MapPageState extends State<MapPage> {
                         text: '- have fun and help the community!\n\n',
                         style: TextStyle(color: Colors.black),
                       ),
-                      const TextSpan(text: 'Current zones:\n'),
+                      const TextSpan(text: 'Current score zones:\n'),
                       const TextSpan(
                         text: 'Yellow',
                         style: TextStyle(color: Color(0xFFC2C21F), fontWeight: FontWeight.bold),
@@ -851,7 +942,12 @@ class _MapPageState extends State<MapPage> {
                         text: 'Purple',
                         style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold),
                       ),
-                      const TextSpan(text: ' - ×1.5'),
+                      const TextSpan(text: ' - ×1.5\n'),
+                      const TextSpan(
+                        text: 'Pink',
+                        style: TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' - ×1.6\n'),
                     ],
                   ),
                 ),

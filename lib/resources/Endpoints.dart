@@ -1,13 +1,15 @@
 class Endpoints {
-  // static const String apiName = "http://192.168.2.234:5274";
-  static const String apiName = "http://10.205.8.136:5274";
+  static const String apiName = "http://192.168.2.234:5274";
+
+  // static const String apiName = "http://10.205.8.136:5274";
 
   // Auth endpoints
   static const String register = "$apiName/register";
   static const String login = "$apiName/login";
 
   // Noise Level endpoints
-  static const String getNoiseLevel = "$apiName/noiseLevel";
+  static String getNoiseLevel(double latitude, double longitude) =>
+      "$apiName/noiseLevel?latitude=$latitude&longitude=$longitude";
   static const String addNoiseLevel = "$apiName/noiseLevel";
   static const String latestMap = "$apiName/latestMap";
 

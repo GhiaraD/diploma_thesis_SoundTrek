@@ -71,7 +71,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         children: [
                           Text(userInfo.timeMeasured.inMinutes.toString(),
                               style: const TextStyle(fontWeight: FontWeight.bold)),
-                          const Text("m", style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text("min", style: TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const Text("Time measured"),
@@ -215,7 +215,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           Row(
                             children: [
                               Text(userInfo.allTimeMeasured.inMinutes.toString(), style: const TextStyle(fontSize: 16)),
-                              const Text("m", style: TextStyle(fontSize: 16)),
+                              const Text("min", style: TextStyle(fontSize: 16)),
                             ],
                           ),
                         ],
@@ -237,7 +237,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               Row(
                                 children: [
                                   Text(userInfo.maxTime.inMinutes.toString(), style: const TextStyle(fontSize: 16)),
-                                  const Text("m", style: TextStyle(fontSize: 16)),
+                                  const Text("min", style: TextStyle(fontSize: 16)),
                                 ],
                               ),
                               Text(userInfo.monthMaxTime.toString(), style: const TextStyle(fontSize: 16)),
