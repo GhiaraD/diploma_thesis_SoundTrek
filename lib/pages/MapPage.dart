@@ -13,8 +13,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geofence_service/geofence_service.dart';
+import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../resources/colors.dart' as my_colors;
@@ -30,7 +32,7 @@ class _MapPageState extends State<MapPage> {
   // Geofences
   final _geofenceStreamController = StreamController<Geofence>();
   final _geofenceService = GeofenceService.instance.setup(
-      interval: 2000,
+      interval: 1000,
       accuracy: 50,
       loiteringDelayMs: 60000,
       statusChangeDelayMs: 5000,
@@ -122,9 +124,6 @@ class _MapPageState extends State<MapPage> {
   // This function is to be called when the geofence status is changed.
   Future<void> _onGeofenceStatusChanged(
       Geofence geofence, GeofenceRadius geofenceRadius, GeofenceStatus geofenceStatus, Location location) async {
-    print('geofence: ${geofence.toJson()}');
-    print('geofenceRadius: ${geofenceRadius.toJson()}');
-    print('geofenceStatus: ${geofenceStatus.toString()}');
     if (geofenceStatus == GeofenceStatus.ENTER) {
       (setState(() {
         multiplier = _geofenceMultipliers[_geofenceList.indexOf(geofence)];
@@ -166,15 +165,41 @@ class _MapPageState extends State<MapPage> {
   }
 
   // heatmap
-  List<WeightedLatLng> heatmapData = [];
+  List<WeightedLatLng> lowHeatmapData = [];
+  List<WeightedLatLng> mediumHeatmapData = [];
+  List<WeightedLatLng> highHeatmapData = [];
   final StreamController<void> _rebuildStream = StreamController.broadcast();
 
   _loadData() async {
     List<NoiseLevel> noise = await _postgresService.fetchMap();
+    List<NoiseLevel> greenList = [];
+    List<NoiseLevel> yellowList = [];
+    List<NoiseLevel> redList = [];
+
+    for (var noiseLevel in noise) {
+      if (noiseLevel.LAeq! < 50) {
+        greenList.add(noiseLevel);
+      } else if (noiseLevel.LAeq! >= 50 && noiseLevel.LAeq! <= 80) {
+        yellowList.add(noiseLevel);
+      } else if (noiseLevel.LAeq! > 80) {
+        redList.add(noiseLevel);
+      }
+    }
+
     setState(() {
-      heatmapData = noise
+      lowHeatmapData = greenList
           .map((e) =>
-              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 1))
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 0.5))
+          .toList();
+
+      mediumHeatmapData = yellowList
+          .map((e) =>
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 0.5))
+          .toList();
+
+      highHeatmapData = redList
+          .map((e) =>
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 0.5))
           .toList();
     });
   }
@@ -191,6 +216,7 @@ class _MapPageState extends State<MapPage> {
   int minutesPassed = 1;
   bool processing = false;
   late LatLng myLocation;
+  late LatLng lastRecordedLocation;
 
   void onAudio(List<double> buffer) async {
     audio.addAll(buffer);
@@ -218,8 +244,8 @@ class _MapPageState extends State<MapPage> {
         "latestMinuteAudio": latestMinuteAudio,
       };
 
-      print(latestMinuteAudio.length);
-      print(latestMinuteAudio[0]);
+      // print(latestMinuteAudio.length);
+      // print(latestMinuteAudio[0]);
 
       // Call compute with serialized arguments
       compute(_filterAndUpload, arg);
@@ -236,8 +262,8 @@ class _MapPageState extends State<MapPage> {
     localLatestMinuteAudio =
         applyBandpassFilter(localLatestMinuteAudio, 20, 20000, AudioStreamer.DEFAULT_SAMPLING_RATE);
     localLatestMinuteAudio = convertToSPL2(localLatestMinuteAudio);
-    print(localLatestMinuteAudio.length);
-    print(localLatestMinuteAudio[0]);
+    // print(localLatestMinuteAudio.length);
+    // print(localLatestMinuteAudio[0]);
 
     noiseLevel.LAeq = double.parse(calculateLAeq(localLatestMinuteAudio).toStringAsFixed(2));
     noiseLevel.LA50 = double.parse(calculateLA50(localLatestMinuteAudio).toStringAsFixed(2));
@@ -255,6 +281,7 @@ class _MapPageState extends State<MapPage> {
 
   /// Start audio sampling.
   void startRecording() async {
+    minutesPassed = 1;
     // Set the sampling rate - works only on Android.
     AudioStreamer().sampleRate = AudioStreamer.DEFAULT_SAMPLING_RATE;
 
@@ -275,6 +302,7 @@ class _MapPageState extends State<MapPage> {
     _postgresService.updateUserStreak(userInfo.userId, userInfo.streak + 1);
     _postgresService.updateUserTimeMeasured(userInfo.userId, userInfo.timeMeasured.inMinutes + minutesPassed - 1);
     _postgresService.updateUserAllTimeMeasured(userInfo.userId, userInfo.allTimeMeasured.inMinutes + minutesPassed - 1);
+    if (minutesPassed > 1) completedDialog();
   }
 
   // userInfo
@@ -461,15 +489,54 @@ class _MapPageState extends State<MapPage> {
                   markerDirection: MarkerDirection.heading,
                 ),
               ),
-              if (heatmapData.isNotEmpty)
+              if (lowHeatmapData.isNotEmpty)
                 HeatMapLayer(
-                  maxZoom: 18,
-                  heatMapDataSource: InMemoryHeatMapDataSource(data: heatmapData),
+                  tileDisplay: const TileDisplay.instantaneous(),
+                  maxZoom: 22,
+                  heatMapDataSource: InMemoryHeatMapDataSource(data: lowHeatmapData),
                   heatMapOptions: HeatMapOptions(
                     minOpacity: 1,
                     blurFactor: 0.5,
                     layerOpacity: 0.75,
                     radius: 35,
+                    gradient: {
+                      0.0: Colors.green,
+                      1.0: Colors.green,
+                    },
+                  ),
+                  reset: _rebuildStream.stream,
+                ),
+              if (mediumHeatmapData.isNotEmpty)
+                HeatMapLayer(
+                  tileDisplay: const TileDisplay.instantaneous(),
+                  maxZoom: 22,
+                  heatMapDataSource: InMemoryHeatMapDataSource(data: mediumHeatmapData),
+                  heatMapOptions: HeatMapOptions(
+                    minOpacity: 1,
+                    blurFactor: 0.5,
+                    layerOpacity: 0.75,
+                    radius: 35,
+                    gradient: {
+                      0.0: Colors.orange,
+                      1.0: Colors.orange,
+                    },
+                  ),
+                  reset: _rebuildStream.stream,
+                ),
+              if (highHeatmapData.isNotEmpty)
+                HeatMapLayer(
+                  tileDisplay: const TileDisplay.instantaneous(),
+                  maxZoom: 22,
+                  heatMapDataSource: InMemoryHeatMapDataSource(data: highHeatmapData),
+                  heatMapOptions: HeatMapOptions(
+                    minOpacity: 1,
+                    blurFactor: 0.5,
+                    layerOpacity: 0.75,
+                    radius: 35,
+                    gradient: {
+                      0.0: Colors.red,
+                      1.0: Colors.red,
+                    },
                   ),
                   reset: _rebuildStream.stream,
                 ),
@@ -714,6 +781,8 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> modalBottomSheet(NoiseLevel noiseLevel) {
+    final DateFormat formatter = DateFormat('yyyy-MM-dd HH:mm');
+
     return showModalBottomSheet<void>(
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -758,7 +827,7 @@ class _MapPageState extends State<MapPage> {
                         padding: EdgeInsets.only(right: 5.0),
                         child: Icon(Icons.access_time, color: my_colors.Colors.primary),
                       ),
-                      Text(noiseLevel.timestamp.toString(),
+                      Text(formatter.format(noiseLevel.timestamp),
                           style: const TextStyle(
                             fontSize: 20,
                             color: Colors.black54,
@@ -770,6 +839,7 @@ class _MapPageState extends State<MapPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
@@ -778,7 +848,7 @@ class _MapPageState extends State<MapPage> {
                                     fontSize: 20,
                                     color: my_colors.Colors.primary,
                                   )),
-                              Text(noiseLevel.LAeq.toString(),
+                              Text(noiseLevel.LAeq!.toStringAsFixed(2),
                                   style: const TextStyle(
                                     fontSize: 20,
                                     color: Colors.black54,
@@ -792,7 +862,7 @@ class _MapPageState extends State<MapPage> {
                                     fontSize: 20,
                                     color: my_colors.Colors.primary,
                                   )),
-                              Text(noiseLevel.LA50.toString(),
+                              Text(noiseLevel.LA50!.toStringAsFixed(2),
                                   style: const TextStyle(
                                     fontSize: 20,
                                     color: Colors.black54,
@@ -804,8 +874,6 @@ class _MapPageState extends State<MapPage> {
                       Center(
                         child: TextButton(
                           style: ButtonStyle(
-                            // elevation: MaterialStateProperty.all<double>(7),
-                            // shadowColor: MaterialStateProperty.all<Color>(Colors.black),
                             padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
                                 const EdgeInsets.symmetric(horizontal: 20, vertical: 0)),
                             backgroundColor: MaterialStateProperty.all<Color>(my_colors.Colors.primaryLight),
@@ -820,7 +888,7 @@ class _MapPageState extends State<MapPage> {
                             if (noiseLevel.LAeq != 0.0) {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => StatsPage(_markerPoz)),
+                                MaterialPageRoute(builder: (context) => StatsPage(_markerPoz, noiseLevel.timestamp)),
                               );
                             } else {
                               Fluttertoast.showToast(
@@ -947,7 +1015,8 @@ class _MapPageState extends State<MapPage> {
                         text: 'Pink',
                         style: TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold),
                       ),
-                      const TextSpan(text: ' - ×1.6\n'),
+                      const TextSpan(text: ' - ×1.6\n\n'),
+                      const TextSpan(text: 'Don\'t forget to calibrate your smartphone for accurate results!'),
                     ],
                   ),
                 ),
@@ -959,6 +1028,56 @@ class _MapPageState extends State<MapPage> {
               child: const Text(
                 'Got it!',
                 style: TextStyle(color: my_colors.Colors.primary),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> completedDialog() {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Congrats!'),
+          backgroundColor: my_colors.Colors.greyBackground,
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                SvgPicture.asset(
+                  'lib/assets/images/undraw_map.svg',
+                  width: 120,
+                  height: 120,
+                ),
+                const SizedBox(height: 16),
+                RichText(
+                  text: TextSpan(
+                    style: DefaultTextStyle.of(context).style,
+                    children: [
+                      TextSpan(
+                        text: '+ ${minutesPassed - 1} minutes contributed\n',
+                        style: const TextStyle(color: Colors.black54, fontSize: 20),
+                      ),
+                      TextSpan(
+                        text: '+ ${100 * (minutesPassed - 1) * multiplier} points achieved\n',
+                        style: const TextStyle(color: Colors.black54, fontSize: 20),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Great!',
+                style: TextStyle(color: my_colors.Colors.primary, fontSize: 20),
               ),
               onPressed: () {
                 Navigator.of(context).pop();

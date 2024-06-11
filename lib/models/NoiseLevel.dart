@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 class NoiseLevel {
-  final num latitude;
-  final num longitude;
+  final num? latitude;
+  final num? longitude;
   final DateTime timestamp;
-  num LAeq;
-  num LA50;
-  final num measurementsCount;
+  num? LAeq;
+  num? LA50;
+  final num? measurementsCount;
 
   NoiseLevel(
       {required this.latitude,
@@ -40,5 +40,19 @@ class NoiseLevel {
 
   String toPrettyJson() {
     return const JsonEncoder.withIndent('  ').convert(toJson());
+  }
+
+  static void sortNoiseLevels(List<NoiseLevel> noiseLevels) {
+    noiseLevels.sort((a, b) {
+      if (a.latitude == b.latitude && a.longitude == b.longitude) {
+        return a.timestamp.compareTo(b.timestamp);
+      } else {
+        if (a.latitude != b.latitude) {
+          return a.latitude!.compareTo(b.latitude!);
+        } else {
+          return a.longitude!.compareTo(b.longitude!);
+        }
+      }
+    });
   }
 }

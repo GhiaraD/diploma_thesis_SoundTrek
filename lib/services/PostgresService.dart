@@ -151,4 +151,69 @@ class PostgresService {
       throw Exception('Failed to load top users by all time streak');
     }
   }
+
+  Future<List<NoiseLevel>> fetchNoiseLevelsByDay(double latitude, double longitude, String day) async {
+    final response = await http.get(Uri.parse(Endpoints.noiseLevelsByDay(latitude, longitude, day)));
+    if (response.statusCode == 200) {
+      try {
+        List<dynamic> body = json.decode(response.body);
+        return body.map((dynamic item) => NoiseLevel.fromJson(item)).toList();
+      } on Exception {
+        return [];
+      } on Error {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }
+
+  Future<List<NoiseLevel>> fetchNoiseLevelsByMonth(double latitude, double longitude, String month) async {
+    final response = await http.get(Uri.parse(Endpoints.noiseLevelsByMonth(latitude, longitude, month)));
+    if (response.statusCode == 200) {
+      try {
+        List<dynamic> body = json.decode(response.body);
+        return body.map((dynamic item) => NoiseLevel.fromJson(item)).toList();
+      } on Exception {
+        return [];
+      } on Error {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }
+
+  Future<List<NoiseLevel>> fetchNoiseLevelsByYear(double latitude, double longitude, String year) async {
+    final response = await http.get(Uri.parse(Endpoints.noiseLevelsByYear(latitude, longitude, year)));
+    print(response.body);
+    if (response.statusCode == 200) {
+      try {
+        List<dynamic> body = json.decode(response.body);
+        return body.map((dynamic item) => NoiseLevel.fromJson(item)).toList();
+      } on Exception {
+        return [];
+      } on Error {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }
+
+  Future<List<NoiseLevel>> fetchNoiseLevelsByWeek(double latitude, double longitude, String weekStartDay) async {
+    final response = await http.get(Uri.parse(Endpoints.noiseLevelsByWeek(latitude, longitude, weekStartDay)));
+    if (response.statusCode == 200) {
+      try {
+        List<dynamic> body = json.decode(response.body);
+        return body.map((dynamic item) => NoiseLevel.fromJson(item)).toList();
+      } on Exception {
+        return [];
+      } on Error {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }
 }

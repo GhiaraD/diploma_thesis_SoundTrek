@@ -192,13 +192,13 @@ class LeaderboardList extends StatelessWidget {
         return Card(
           child: ListTile(
             tileColor: my_colors.Colors.greyBackground,
-            leading: Text((index + 1).toString()),
+            leading: leading(index + 1),
             title: Row(
               children: [
                 const Icon(
                   Icons.person,
-                  size: 25,
-                  color: my_colors.Colors.primary,
+                  size: 32,
+                  color: my_colors.Colors.secondaryVariant,
                 ),
                 const SizedBox(width: 10),
                 Text(user.username),
@@ -209,6 +209,18 @@ class LeaderboardList extends StatelessWidget {
         );
       },
     );
+  }
+
+  Widget leading(int index) {
+    if (index == 1) {
+      return const Image(image: AssetImage("lib/assets/images/gold_cup.png"), width: 24, height: 24);
+    } else if (index == 2) {
+      return const Image(image: AssetImage("lib/assets/images/silver_cup.png"), width: 24, height: 24);
+    } else if (index == 3) {
+      return const Image(image: AssetImage("lib/assets/images/bronze_cup.png"), width: 24, height: 24);
+    } else {
+      return Text("$index");
+    }
   }
 }
 

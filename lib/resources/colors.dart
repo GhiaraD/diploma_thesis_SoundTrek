@@ -13,4 +13,6 @@ class Colors {
   static const Color greyDark = Color(0xFF9E9E9E);
   static const Color greyLight = Color(0xFFD3D3D3);
   static const Color greyBackground = Color(0xFFF9F9F9);
+  static const Color undraw = Color(0xFF2F2E41);
+  static const Color darkGreen = Color(0xFF0B6623);
 }

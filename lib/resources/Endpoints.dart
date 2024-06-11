@@ -1,7 +1,7 @@
 class Endpoints {
-  static const String apiName = "http://192.168.2.234:5274";
+  // static const String apiName = "http://192.168.2.234:5274";
 
-  // static const String apiName = "http://10.205.8.136:5274";
+  static const String apiName = "http://10.205.8.136:5274";
 
   // Auth endpoints
   static const String register = "$apiName/register";
@@ -17,10 +17,10 @@ class Endpoints {
       "$apiName/noiseLevelsByDay?latitude=$latitude&longitude=$longitude&day=$day";
 
   static String noiseLevelsByMonth(double latitude, double longitude, String month) =>
-      "$apiName/noiseLevelsByMonth?latitude=$latitude&longitude=$longitude&day=$month-01";
+      "$apiName/noiseLevelsByMonth?latitude=$latitude&longitude=$longitude&day=$month";
 
   static String noiseLevelsByYear(double latitude, double longitude, String year) =>
-      "$apiName/noiseLevelsByYear?latitude=$latitude&longitude=$longitude&day=$year-01-01";
+      "$apiName/noiseLevelsByYear?latitude=$latitude&longitude=$longitude&day=$year";
 
   static String noiseLevelsByWeek(double latitude, double longitude, String weekStartDay) =>
       "$apiName/noiseLevelsByWeek?latitude=$latitude&longitude=$longitude&day=$weekStartDay";
