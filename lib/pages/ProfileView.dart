@@ -1,4 +1,5 @@
 import 'package:SoundTrek/models/UsersInfo.dart';
+import 'package:SoundTrek/pages/InfoView.dart';
 import 'package:SoundTrek/pages/SettingsPage.dart';
 import 'package:SoundTrek/services/AuthenticationService.dart';
 import 'package:SoundTrek/services/PostgresService.dart';
@@ -39,12 +40,23 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    DateTime now = DateTime.now();
+    DateTime lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
+    int daysUntilEndOfMonth = lastDayOfMonth.difference(now).inDays;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: my_colors.Colors.primaryOverlay,
         automaticallyImplyLeading: false,
         title: const Text("Profile", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         actions: [
+          IconButton(
+              icon: const Icon(Icons.menu_book),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const InfoView()),
+                );
+              }),
           IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () {
@@ -164,6 +176,19 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black54),
               ),
             ],
+          ),
+          Tooltip(
+            message: "Competition ongoing!\nGain score and streak until time runs out!",
+            triggerMode: TooltipTriggerMode.tap,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(daysUntilEndOfMonth.toString(), style: const TextStyle(fontSize: 16)),
+                const Text(" days", style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 4),
+                const Icon(Icons.timer, color: my_colors.Colors.primary),
+              ],
+            ),
           ),
           Expanded(
             flex: 1,

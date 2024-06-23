@@ -84,7 +84,7 @@ class _LoginViewState extends State<LoginView> {
               controller: _emailController,
               cursorColor: my_colors.Colors.primary,
               decoration: const InputDecoration(
-                labelText: 'Email',
+                labelText: 'Username',
                 border: OutlineInputBorder(
                   borderSide: BorderSide(color: my_colors.Colors.primary, width: 5),
                 ),

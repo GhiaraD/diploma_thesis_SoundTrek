@@ -1,7 +1,9 @@
-class Endpoints {
-  // static const String apiName = "http://192.168.2.234:5274";
+import 'package:geofence_service/geofence_service.dart';
 
-  static const String apiName = "http://10.205.8.136:5274";
+class Endpoints {
+  static const String apiName = "http://192.168.2.234:5274";
+
+  // static const String apiName = "http://10.205.8.136:5274";
 
   // Auth endpoints
   static const String register = "$apiName/register";
@@ -31,6 +33,10 @@ class Endpoints {
   static const String topUsersByMaxScore = "$apiName/userInfo/maxScore";
   static const String topUsersByStreak = "$apiName/userInfo/streak";
   static const String topUsersByAllTimeStreak = "$apiName/userInfo/allTimeStreak";
+
+  static Geofence geofence(int i) {
+    return Geofence(id: "1", latitude: 12, longitude: 13, radius: []);
+  }
 
   // Update user info endpoints with placeholders for userId
   static String updateUserScore(int userId) => "$apiName/userInfo/$userId/score";

@@ -20,6 +20,7 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../resources/colors.dart' as my_colors;
+import '../resources/themes.dart' as my_themes;
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -33,9 +34,9 @@ class _MapPageState extends State<MapPage> {
   final _geofenceStreamController = StreamController<Geofence>();
   final _geofenceService = GeofenceService.instance.setup(
       interval: 1000,
-      accuracy: 50,
+      accuracy: 100,
       loiteringDelayMs: 60000,
-      statusChangeDelayMs: 5000,
+      statusChangeDelayMs: 10000,
       useActivityRecognition: true,
       allowMockLocations: false,
       printDevLog: true,
@@ -189,17 +190,17 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       lowHeatmapData = greenList
           .map((e) =>
-              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 0.5))
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 1))
           .toList();
 
       mediumHeatmapData = yellowList
           .map((e) =>
-              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 0.5))
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 1))
           .toList();
 
       highHeatmapData = redList
           .map((e) =>
-              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 0.5))
+              WeightedLatLng(LatLng(double.parse(e.latitude.toString()), double.parse(e.longitude.toString())), 1))
           .toList();
     });
   }
@@ -244,9 +245,6 @@ class _MapPageState extends State<MapPage> {
         "latestMinuteAudio": latestMinuteAudio,
       };
 
-      // print(latestMinuteAudio.length);
-      // print(latestMinuteAudio[0]);
-
       // Call compute with serialized arguments
       compute(_filterAndUpload, arg);
       latestMinuteAudio = [];
@@ -262,8 +260,6 @@ class _MapPageState extends State<MapPage> {
     localLatestMinuteAudio =
         applyBandpassFilter(localLatestMinuteAudio, 20, 20000, AudioStreamer.DEFAULT_SAMPLING_RATE);
     localLatestMinuteAudio = convertToSPL2(localLatestMinuteAudio);
-    // print(localLatestMinuteAudio.length);
-    // print(localLatestMinuteAudio[0]);
 
     noiseLevel.LAeq = double.parse(calculateLAeq(localLatestMinuteAudio).toStringAsFixed(2));
     noiseLevel.LA50 = double.parse(calculateLA50(localLatestMinuteAudio).toStringAsFixed(2));
@@ -494,16 +490,10 @@ class _MapPageState extends State<MapPage> {
                   tileDisplay: const TileDisplay.instantaneous(),
                   maxZoom: 22,
                   heatMapDataSource: InMemoryHeatMapDataSource(data: lowHeatmapData),
-                  heatMapOptions: HeatMapOptions(
-                    minOpacity: 1,
-                    blurFactor: 0.5,
-                    layerOpacity: 0.75,
-                    radius: 35,
-                    gradient: {
-                      0.0: Colors.green,
-                      1.0: Colors.green,
-                    },
-                  ),
+                  heatMapOptions: my_themes.Themes.heatMapOptions({
+                    0.0: Colors.green,
+                    1.0: Colors.green,
+                  }),
                   reset: _rebuildStream.stream,
                 ),
               if (mediumHeatmapData.isNotEmpty)
@@ -511,16 +501,10 @@ class _MapPageState extends State<MapPage> {
                   tileDisplay: const TileDisplay.instantaneous(),
                   maxZoom: 22,
                   heatMapDataSource: InMemoryHeatMapDataSource(data: mediumHeatmapData),
-                  heatMapOptions: HeatMapOptions(
-                    minOpacity: 1,
-                    blurFactor: 0.5,
-                    layerOpacity: 0.75,
-                    radius: 35,
-                    gradient: {
-                      0.0: Colors.orange,
-                      1.0: Colors.orange,
-                    },
-                  ),
+                  heatMapOptions: my_themes.Themes.heatMapOptions({
+                    0.0: Colors.orange,
+                    1.0: Colors.orange,
+                  }),
                   reset: _rebuildStream.stream,
                 ),
               if (highHeatmapData.isNotEmpty)
@@ -528,16 +512,10 @@ class _MapPageState extends State<MapPage> {
                   tileDisplay: const TileDisplay.instantaneous(),
                   maxZoom: 22,
                   heatMapDataSource: InMemoryHeatMapDataSource(data: highHeatmapData),
-                  heatMapOptions: HeatMapOptions(
-                    minOpacity: 1,
-                    blurFactor: 0.5,
-                    layerOpacity: 0.75,
-                    radius: 35,
-                    gradient: {
-                      0.0: Colors.red,
-                      1.0: Colors.red,
-                    },
-                  ),
+                  heatMapOptions: my_themes.Themes.heatMapOptions({
+                    0.0: Colors.red,
+                    1.0: Colors.red,
+                  }),
                   reset: _rebuildStream.stream,
                 ),
               Align(
@@ -773,7 +751,24 @@ class _MapPageState extends State<MapPage> {
                 ),
               ),
             ),
-          )
+          ),
+          Positioned(
+            top: 136,
+            left: 16,
+            child: Container(
+              color: my_colors.Colors.greyBackground,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text("--.-", style: TextStyle(fontSize: 24)),
+                    Text(" dB(A)", style: TextStyle(fontSize: 16)),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
       // Add your bottom navigation bar here
@@ -950,11 +945,15 @@ class _MapPageState extends State<MapPage> {
                         style: TextStyle(color: Colors.black),
                       ),
                       const TextSpan(
-                        text: '- record sound for one minute\n',
+                        text: '- 1 minute of recording = points\n',
                         style: TextStyle(color: Colors.black),
                       ),
                       const TextSpan(
-                        text: '- get points to compete with friends\n',
+                        text: '- compete with friends\n',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      const TextSpan(
+                        text: '- score zones give you multipliers\n',
                         style: TextStyle(color: Colors.black),
                       ),
                       const TextSpan(
@@ -965,15 +964,11 @@ class _MapPageState extends State<MapPage> {
                         child: Image.asset('lib/assets/images/trophy.png', width: 16, height: 16),
                       ),
                       const TextSpan(
-                        text: '\n- score zones give you multipliers\n',
+                        text: '\n- collect all the achievements\n',
                         style: TextStyle(color: Colors.black),
                       ),
                       const TextSpan(
-                        text: '- collect all the achievements\n',
-                        style: TextStyle(color: Colors.black),
-                      ),
-                      const TextSpan(
-                        text: '- contribute daily and try to get the longest streak\n',
+                        text: '- contribute daily and try to get the biggest streak\n',
                         style: TextStyle(color: Colors.black),
                       ),
                       const TextSpan(

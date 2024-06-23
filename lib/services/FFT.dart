@@ -3,45 +3,6 @@ import 'dart:typed_data';
 
 import 'package:fftea/fftea.dart';
 
-List<double> applyLowPassFilter(List<double> data, double cutoffFrequency, double samplingRate) {
-  int N = data.length;
-  double nyquist = samplingRate / 2;
-  int cutoffIndex = (cutoffFrequency / nyquist * (N / 2)).floor();
-
-  // FFT
-  var fft = FFT(N);
-  var freqDomain = fft.realFft(data);
-
-  // Zero out frequencies above the cutoff
-  for (int i = cutoffIndex; i < freqDomain.length - cutoffIndex; i++) {
-    freqDomain[i] = Float64x2.zero();
-  }
-
-  // IFFT
-  List<double> filteredData = fft.realInverseFft(freqDomain).toList();
-  return filteredData;
-}
-
-List<double> applyHighPassFilter(List<double> data, double cutoffFrequency, double samplingRate) {
-  int N = data.length;
-  double nyquist = samplingRate / 2;
-  int cutoffIndex = (cutoffFrequency / nyquist * (N / 2)).floor();
-
-  // FFT
-  var fft = FFT(N);
-  var freqDomain = fft.realFft(data);
-
-  // Zero out frequencies below the cutoff
-  for (int i = 0; i < cutoffIndex; i++) {
-    freqDomain[i] = Float64x2.zero();
-    freqDomain[freqDomain.length - i - 1] = Float64x2.zero();
-  }
-
-  // IFFT
-  List<double> filteredData = fft.realInverseFft(freqDomain).toList();
-  return filteredData;
-}
-
 List<double> applyBandpassFilter(List<double> data, double lowCutoff, double highCutoff, int samplingRate) {
   int N = data.length;
 
@@ -83,24 +44,7 @@ List<double> applyWindowFunction(List<double> data) {
   return windowedData;
 }
 
-List<double> convertToSPL(List<double> normalizedAudio, {double maxSPL = 120.0}) {
-  double referencePressure = 20e-6; // Reference pressure in Pascals (20 μPa)
-  double pMax = referencePressure * pow(10, maxSPL / 20); // Max pressure at full scale amplitude ±1
-
-  List<double> splValues = [];
-  for (double amplitude in normalizedAudio) {
-    if (amplitude != 0) {
-      double p = pMax * amplitude; // Calculate pressure for this sample
-      double spl = 20 * log(p / referencePressure) / ln10; // Calculate SPL in dB
-      splValues.add(spl);
-    } else {
-      splValues.add(-double.infinity); // Logarithm of zero amplitude gives negative infinity
-    }
-  }
-  return splValues;
-}
-
-List<double> convertToSPL2(List<double> normalizedAudio, {double maxSPL = 120.0}) {
+List<double> convertToSPL2(List<double> normalizedAudio, {double maxSPL = 120.0, double calibrationOffset = 0.0}) {
   double referencePressure = 20e-6; // Reference pressure in Pascals (20 μPa)
   double pMax = referencePressure * pow(10, maxSPL / 20); // Max pressure at full scale amplitude ±1
 
@@ -110,6 +54,7 @@ List<double> convertToSPL2(List<double> normalizedAudio, {double maxSPL = 120.0}
       // Check for non-zero amplitude
       double p = pMax * amplitude; // Calculate pressure for this sample
       double spl = 20 * log(p / referencePressure) / ln10; // Calculate SPL in dB
+      spl += calibrationOffset; // Aplicarea factorului de calibrare
       splValues.add(spl);
     } else {
       splValues.add(0); // Substitute zero for log of zero amplitude

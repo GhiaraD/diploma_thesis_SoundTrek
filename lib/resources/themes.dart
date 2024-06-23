@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map_heatmap/flutter_heatmap.dart';
 
 import 'colors.dart' as my_colors;
 
@@ -56,6 +57,16 @@ class Themes {
     fontSize: 24,
     fontWeight: FontWeight.normal,
   );
+
+  static HeatMapOptions heatMapOptions(Map<double, MaterialColor> gradient) {
+    return HeatMapOptions(
+      minOpacity: 0.5,
+      blurFactor: 0.5,
+      layerOpacity: 0.7,
+      radius: 32,
+      gradient: gradient,
+    );
+  }
 }
 
 class CurvedTopPainter extends CustomPainter {

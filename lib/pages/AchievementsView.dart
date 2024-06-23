@@ -16,7 +16,7 @@ class _AchievementViewState extends State<AchievementView> {
   bool isLoading = true;
 
   Future<void> fetchData() async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 50));
     setState(() {
       isLoading = false;
     });
@@ -130,15 +130,15 @@ List<Achievement> achievements = [
   Achievement(
     title: "Neighborhood Watcher",
     description: "Record noise data in 3 different score zones.",
-    currentProgress: 2,
-    totalSteps: 5,
+    currentProgress: 1,
+    totalSteps: 3,
     image: 'lib/assets/images/undraw_circles.svg',
   ),
   Achievement(
     title: "City Explorer",
     description: "Record noise data in all score zones.",
-    currentProgress: 4,
-    totalSteps: 10,
+    currentProgress: 1,
+    totalSteps: 6,
     image: 'lib/assets/images/undraw_all_data.svg',
   ),
   Achievement(
