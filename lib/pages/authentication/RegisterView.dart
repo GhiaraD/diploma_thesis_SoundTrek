@@ -175,9 +175,10 @@ class _RegisterViewState extends State<RegisterView> {
                   ? () async {
                       bool registered = await _register();
                       if (registered) {
-                        Navigator.pushReplacement(
+                        Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(builder: (context) => const NavigationExample()),
+                          ModalRoute.withName('/'),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(

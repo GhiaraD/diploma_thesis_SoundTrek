@@ -218,6 +218,7 @@ class _MapPageState extends State<MapPage> {
   bool processing = false;
   late LatLng myLocation;
   late LatLng lastRecordedLocation;
+  ValueNotifier<double> instantLAeq = ValueNotifier<double>(0.0);
 
   void onAudio(List<double> buffer) async {
     audio.addAll(buffer);
@@ -227,6 +228,11 @@ class _MapPageState extends State<MapPage> {
     recordingTime.value = audio.length / sampleRate!;
 
     latestMinuteAudio.addAll(buffer);
+    // Calculează SPL pentru buffer-ul curent
+    var currentSPL = convertToSPL2(buffer);
+    var currentLAeq = calculateLAeq(currentSPL);
+
+    instantLAeq.value = currentLAeq;
 
     if (recordingTime.value > 60 * minutesPassed && !processing) {
       // Send data to server on a separate isolate
@@ -298,6 +304,7 @@ class _MapPageState extends State<MapPage> {
     _postgresService.updateUserStreak(userInfo.userId, userInfo.streak + 1);
     _postgresService.updateUserTimeMeasured(userInfo.userId, userInfo.timeMeasured.inMinutes + minutesPassed - 1);
     _postgresService.updateUserAllTimeMeasured(userInfo.userId, userInfo.allTimeMeasured.inMinutes + minutesPassed - 1);
+    instantLAeq.value = 0.0;
     if (minutesPassed > 1) completedDialog();
   }
 
@@ -370,10 +377,15 @@ class _MapPageState extends State<MapPage> {
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
         isSticky: false,
+        iconData: const NotificationIconData(
+          resType: ResourceType.mipmap,
+          resPrefix: ResourcePrefix.ic,
+          name: 'launcher_icon',
+        ),
       ),
       iosNotificationOptions: const IOSNotificationOptions(),
       foregroundTaskOptions: const ForegroundTaskOptions(),
-      notificationTitle: 'Geofence Service is running',
+      notificationTitle: 'SoundTrek is running in the background',
       notificationText: 'Tap to return to the app',
       child: Scaffold(
         body: _buildContentView(),
@@ -757,13 +769,19 @@ class _MapPageState extends State<MapPage> {
             left: 16,
             child: Container(
               color: my_colors.Colors.greyBackground,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text("--.-", style: TextStyle(fontSize: 24)),
-                    Text(" dB(A)", style: TextStyle(fontSize: 16)),
+                    // Text("--.-", style: TextStyle(fontSize: 24)), // TODO
+                    ValueListenableBuilder<double>(
+                      valueListenable: instantLAeq,
+                      builder: (context, laeq, child) {
+                        return Text(laeq.toStringAsFixed(1), style: const TextStyle(fontSize: 24));
+                      },
+                    ),
+                    const Text(" dB(A)", style: TextStyle(fontSize: 16)),
                   ],
                 ),
               ),

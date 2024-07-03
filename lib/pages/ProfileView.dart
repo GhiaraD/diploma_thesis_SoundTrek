@@ -17,14 +17,14 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _mapService = PostgresService();
+  final _postgresService = PostgresService();
   final _authService = AuthenticationService();
   UsersInfo userInfo = UsersInfo();
   int achievements = 0;
 
   Future<UsersInfo> getUser() async {
     String? uid = await _authService.getUID();
-    return _mapService.fetchUserInfo(int.parse(uid!));
+    return _postgresService.fetchUserInfo(int.parse(uid!));
   }
 
   @override

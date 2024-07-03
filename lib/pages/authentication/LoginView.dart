@@ -130,9 +130,10 @@ class _LoginViewState extends State<LoginView> {
                   ? () async {
                       bool loggedIn = await _login();
                       if (loggedIn) {
-                        Navigator.pushReplacement(
+                        Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(builder: (context) => const NavigationExample()),
+                          ModalRoute.withName('/'),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(

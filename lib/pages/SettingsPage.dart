@@ -82,8 +82,11 @@ class _SettingsPageState extends State<SettingsPage> {
             child: TextButton(
               onPressed: () async {
                 apiService.logout();
-                Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (context) => const MyHomePage(title: "SoundTrek")));
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MyHomePage(title: "SoundTrek")),
+                  ModalRoute.withName('/'),
+                );
               },
               style: my_themes.Themes.buttonHalfPageStyleDisabled,
               child: const Text('Log Out'),

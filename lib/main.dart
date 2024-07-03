@@ -122,7 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: TextButton(
                       style: my_themes.Themes.buttonHalfPageStyleLight,
                       onPressed: () {
-                        Navigator.push(
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (context) => const LoginView()),
                         );

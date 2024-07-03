@@ -44,7 +44,7 @@ List<double> applyWindowFunction(List<double> data) {
   return windowedData;
 }
 
-List<double> convertToSPL2(List<double> normalizedAudio, {double maxSPL = 120.0, double calibrationOffset = 0.0}) {
+List<double> convertToSPL2(List<double> normalizedAudio, {double maxSPL = 120.0, double calibrationOffset = -3.0}) {
   double referencePressure = 20e-6; // Reference pressure in Pascals (20 μPa)
   double pMax = referencePressure * pow(10, maxSPL / 20); // Max pressure at full scale amplitude ±1
 
